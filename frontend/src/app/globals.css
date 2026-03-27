@@ -11,4 +11,9 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+div, section, header, nav, main, aside, footer, form {
+  outline: 1px solid rgba(0, 0, 0, 0.03);
+  outline-offset: -1px;
+}
+
 
