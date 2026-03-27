@@ -3,21 +3,24 @@ import asyncio
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
-async def run_decision_room(candidate_data: dict, interview_transcript: str):
-    """
-    Simulates a debate between the Recruiter, Hiring Manager, and Compliance Officer.
-    Finally, The Orchestrator reaches a consensus or documents a split decision.
-    """
-    llm = ChatOpenAI(
+def get_featherless_llm(model="meta-llama/Meta-Llama-3.1-70B-Instruct"):
+    return ChatOpenAI(
         api_key=os.getenv("FEATHERLESS_API_KEY", "mock_key"),
         base_url="https://api.featherless.ai/v1",
-        model="deepseek-ai/DeepSeek-R1"
+        model=model
     )
+
+async def run_decision_room(candidate_data: dict, interview_transcript: str):
+    """
+    Simulates how real hiring decisions are made across multiple stakeholders.
+    Reflects tradeoffs, disagreements, and executive synthesis.
+    """
+    llm = get_featherless_llm("meta-llama/Meta-Llama-3.1-405B-Instruct") 
     
     # 3 distinct roles for the Decision Simulator
-    recruiter_prompt = "You are Agent A (The Recruiter). Focus on Time-to-Productivity and culture fit. Try to find the non-traditional signals that point to high ROI. Read the candidate data and interview transcript, and argue your case."
-    hm_prompt = "You are Agent B (The Hiring Manager). Focus on technical Quality of Hire and long-term business impact. Read the candidate data and transcript, and argue your case objectively."
-    compliance_prompt = "You are Agent C (The Compliance Officer). Flag potential bias and Institutional Pedigree considerations. Ensure alignment with the EU AI Act. Argue your case safely."
+    recruiter_prompt = "You are Agent A (The Recruiter). You are desperate to fill the role quickly, but you care about culture fit. You will rigorously defend the candidate if they show non-traditional hustle, but you hate when candidates sound robotic or AI-generated. Read the data and argue your case."
+    hm_prompt = "You are Agent B (The Hiring Manager). You only care about technical excellence, deep thinking, and long-term business impact. You are highly skeptical of buzzwords. Read the candidate data and transcript, and aggressively critique their technical depth."
+    compliance_prompt = "You are Agent C (Risk/Compliance). You flag potential bias, institutional pedigree considerations, and cheating risks. You ensure alignment with HR guidelines. You are strictly objective and cautious."
     
     payload = f"Candidate Data:\n{candidate_data}\n\nTranscript:\n{interview_transcript}"
     
@@ -30,10 +33,13 @@ async def run_decision_room(candidate_data: dict, interview_transcript: str):
     
     recruiter_case, hm_case, compliance_case = [r.content for r in results]
     
-    # Generate the Final Explainable AI (XAI) output
-    consensus_prompt = "You are 'The Orchestrator'. Read the arguments from the Recruiter, Hiring Manager, and Compliance Officer. Output a structured final decision (Explainable AI report) detailing the tradeoffs and whether to HIRE or REJECT the candidate."
+    # Orchestrator resolves the debate
+    consensus_prompt = """You are 'The Orchestrator'. You lead the final hiring decision room.
+Read the heated arguments from the Recruiter, Hiring Manager, and Risk Officer. 
+Reflect the tradeoffs, synthesize the deep disagreements, and make a FINAL ruling: HIRE or REJECT.
+This must read like a dramatic execution summary from a real decision room, not a scoring script."""
     
-    debate_log = f"*Recruiter Agent:*\n{recruiter_case}\n\n*Hiring Manager Agent:*\n{hm_case}\n\n*Compliance Officer Agent:*\n{compliance_case}"
+    debate_log = f"--- DECISION ROOM LOG ---\n\n*Recruiter (Focus: Hustle & Speed):*\n{recruiter_case}\n\n*Hiring Manager (Focus: Tech Depth & Risk):*\n{hm_case}\n\n*Compliance Officer (Focus: Cheating & Guidelines):*\n{compliance_case}"
     
     final_decision = await llm.ainvoke([
         SystemMessage(content=consensus_prompt),

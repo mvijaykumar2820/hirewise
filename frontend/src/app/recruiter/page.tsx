@@ -45,7 +45,7 @@ export default function RecruiterDashboard() {
   useEffect(() => {
     const q = query(collection(db, "jobs"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const liveJobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const liveJobs = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       // Sort by recency locally for now
       liveJobs.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setJobs(liveJobs);

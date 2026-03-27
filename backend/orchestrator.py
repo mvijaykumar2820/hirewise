@@ -1,4 +1,4 @@
-from typing import TypedDict, Annotated, List, Dict
+from typing import TypedDict, Annotated, List, Dict, Any
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import BaseMessage
 
@@ -9,14 +9,16 @@ from agents.interviewer import conduct_interview_turn
 from agents.decision_room import run_decision_room
 
 class CandidateState(TypedDict):
+    candidate_id: str
+    hr_preferences: str
     resume_text: str
     github_url: str
     linkedin_url: str
     leetcode_url: str
     
     # Phase 1 Data
-    digital_footprint_data: Dict
-    resume_analysis: str
+    signals_gathered: Dict[str, Any]
+    ranking_analysis: Dict[str, Any]
     
     # Phase 2 Data
     recruiter_test_questions: List[str]
@@ -31,17 +33,27 @@ class CandidateState(TypedDict):
     final_decision: str
 
 async def discovery_node(state: CandidateState):
+    # Prepare candidate data payload
+    candidate_data = {
+        "resume_text": state.get("resume_text", ""),
+        "github_url": state.get("github_url", ""),
+        "linkedin_url": state.get("linkedin_url", ""),
+        "leetcode_url": state.get("leetcode_url", "")
+    }
+    
     result = await run_discovery_agent(
-        state.get("resume_text", ""),
-        state.get("linkedin_url", ""),
-        state.get("github_url", "")
+        candidate_id=state.get("candidate_id", "unknown"),
+        candidate_data=candidate_data,
+        hr_preferences=state.get("hr_preferences", "Find the best technical talent.")
     )
-    state["digital_footprint_data"] = result["digital_footprint_data"]
-    state["resume_analysis"] = result["resume_analysis"]
+    
+    state["signals_gathered"] = result["signals_gathered"]
+    state["ranking_analysis"] = result["ranking_analysis"]
     return state
 
 async def test_generation_node(state: CandidateState):
-    questions = await generate_recruiter_test(state.get("resume_analysis", ""))
+    reasoning = state.get("ranking_analysis", {}).get("reasoning", "")
+    questions = await generate_recruiter_test(reasoning)
     state["recruiter_test_questions"] = questions
     return state
 
@@ -52,8 +64,8 @@ async def interview_node(state: CandidateState):
 async def decision_room_node(state: CandidateState):
     # Prepare data for debate
     candidate_data = {
-        "footprint": state.get("digital_footprint_data"),
-        "resume_analysis": state.get("resume_analysis"),
+        "signals": state.get("signals_gathered"),
+        "ranking_analysis": state.get("ranking_analysis"),
         "test_score": state.get("recruiter_test_score", 0)
     }
     
