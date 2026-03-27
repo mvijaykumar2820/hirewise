@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { LayoutDashboard, Briefcase, Home as HomeIcon, LogOut, Plus, Users, CheckCircle, Clock, ChevronLeft, User as UserIcon } from "lucide-react";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import { Canvas, useFrame } from "@react-three/fiber";
+import { collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
+import { db } from "../../firebase";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
@@ -26,54 +28,54 @@ const AbstractShapes = () => {
   );
 };
 
-// -- Mock Data --
-const MOCK_JOBS = [
-  { 
-    id: 1, title: "Senior Frontend Engineer", salary: "$140k - $160k", applicants: 45, passed: 12, rejected: 33,
-    candidates: [
-      { id: 101, name: "Alice Johnson", score: 92, status: "Passed", highlight: "Excellent modularity & UX" },
-      { id: 102, name: "Bob Smith", score: 78, status: "Pending", highlight: "Good fundamentals, slow output" },
-      { id: 103, name: "Charlie Davis", score: 45, status: "Rejected", highlight: "Failed technical screening" },
-    ]
-  },
-  { 
-    id: 2, title: "AI Product Manager", salary: "$130k - $170k", applicants: 89, passed: 24, rejected: 65,
-    candidates: [
-      { id: 201, name: "Sarah Lee", score: 95, status: "Passed", highlight: "Strong AI strategy background" }
-    ]
-  },
-  { 
-    id: 3, title: "Data Scientist", salary: "$150k - $180k", applicants: 112, passed: 18, rejected: 94,
-    candidates: [] 
-  },
-];
-
 export default function RecruiterDashboard() {
   const [activeTab, setActiveTab] = useState("home");
-  const [jobs, setJobs] = useState(MOCK_JOBS);
-  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   
   // Create Job Form State
   const [showCreateJob, setShowCreateJob] = useState(false);
   const [newJob, setNewJob] = useState({ title: "", salary: "", description: "" });
 
   // Applications Tab View State
-  const [viewingCandidatesFor, setViewingCandidatesFor] = useState<number | null>(null);
+  const [viewingCandidatesFor, setViewingCandidatesFor] = useState<string | null>(null);
 
-  const handleCreateJob = (e: React.FormEvent) => {
+  // Firestore Real-Time Listener
+  useEffect(() => {
+    const q = query(collection(db, "jobs"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const liveJobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Sort by recency locally for now
+      liveJobs.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setJobs(liveJobs);
+      setLoading(false);
+    }, (error) => {
+      console.error("Firestore Listen Error:", error);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleCreateJob = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newJob.title) return;
-    setJobs([...jobs, { 
-      id: jobs.length + 1, 
-      title: newJob.title, 
-      salary: newJob.salary || "TBD", 
-      applicants: 0, 
-      passed: 0, 
-      rejected: 0,
-      candidates: []
-    }]);
-    setShowCreateJob(false);
-    setNewJob({ title: "", salary: "", description: "" });
+    try {
+      await addDoc(collection(db, "jobs"), {
+        title: newJob.title,
+        salary: newJob.salary || "TBD",
+        description: newJob.description,
+        applicants: 0,
+        passed: 0,
+        rejected: 0,
+        candidates: [],
+        createdAt: new Date().toISOString()
+      });
+      setShowCreateJob(false);
+      setNewJob({ title: "", salary: "", description: "" });
+    } catch (err) {
+      console.error("Error creating job:", err);
+    }
   };
 
   const selectedJob = jobs.find(j => j.id === selectedJobId);
@@ -89,6 +91,14 @@ export default function RecruiterDashboard() {
       borderRadius: 4,
     }]
   };
+
+  if (loading) {
+    return (
+      <div className="flex bg-white items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-white text-gray-900 font-sans overflow-hidden">
@@ -138,7 +148,7 @@ export default function RecruiterDashboard() {
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <header>
                 <h2 className="text-4xl font-bold tracking-tight text-gray-900">Welcome Back</h2>
-                <p className="text-gray-500 mt-2 text-lg">Here is a quick overview of your recruitment pipeline today.</p>
+                <p className="text-gray-500 mt-2 text-lg">Here is a quick overview of your live recruitment pipeline.</p>
               </header>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-sm">
@@ -153,14 +163,14 @@ export default function RecruiterDashboard() {
                     <div className="p-3 bg-green-50 text-green-600 rounded-lg"><Users size={24} /></div>
                     <h3 className="text-lg font-semibold text-gray-700">Total Applicants</h3>
                   </div>
-                  <p className="text-4xl font-bold text-gray-900">{jobs.reduce((acc, curr) => acc + curr.applicants, 0)}</p>
+                  <p className="text-4xl font-bold text-gray-900">{jobs.reduce((acc, curr) => acc + (curr.applicants || 0), 0)}</p>
                 </div>
                 <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-sm">
                   <div className="flex items-center space-x-4 mb-4">
                     <div className="p-3 bg-purple-50 text-purple-600 rounded-lg"><CheckCircle size={24} /></div>
                     <h3 className="text-lg font-semibold text-gray-700">Passed Candidates</h3>
                   </div>
-                  <p className="text-4xl font-bold text-gray-900">{jobs.reduce((acc, curr) => acc + curr.passed, 0)}</p>
+                  <p className="text-4xl font-bold text-gray-900">{jobs.reduce((acc, curr) => acc + (curr.passed || 0), 0)}</p>
                 </div>
               </div>
             </div>
@@ -176,7 +186,7 @@ export default function RecruiterDashboard() {
                   <header className="flex justify-between items-end border-b border-gray-200 pb-4">
                     <div>
                       <h2 className="text-3xl font-bold tracking-tight text-gray-900">Job Applications</h2>
-                      <p className="text-gray-500 mt-1">Manage postings and review candidates.</p>
+                      <p className="text-gray-500 mt-1">Manage live postings and review actual candidates.</p>
                     </div>
                     <button onClick={() => setShowCreateJob(!showCreateJob)} className="bg-gray-900 hover:bg-black text-white px-5 py-2.5 rounded-lg font-medium flex items-center space-x-2 transition-colors shadow-sm">
                       <Plus size={18} /> <span>Create New Job</span>
@@ -219,24 +229,24 @@ export default function RecruiterDashboard() {
                         <div className="flex items-center space-x-6">
                           <div className="flex space-x-6 text-sm mr-4 border-r border-gray-200 pr-6">
                             <div className="text-center">
-                              <span className="block font-bold text-xl text-gray-900">{job.applicants}</span>
+                              <span className="block font-bold text-xl text-gray-900">{job.applicants || 0}</span>
                               <span className="text-gray-500">Applied</span>
                             </div>
                             <div className="text-center">
-                              <span className="block font-bold text-xl text-green-600">{job.passed}</span>
+                              <span className="block font-bold text-xl text-green-600">{job.passed || 0}</span>
                               <span className="text-gray-500">Passed</span>
                             </div>
                           </div>
                           <button 
                             onClick={() => setViewingCandidatesFor(job.id)}
-                            className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium transition-colors"
+                            className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer"
                           >
                             View Candidates
                           </button>
                         </div>
                       </div>
                     ))}
-                    {jobs.length === 0 && <p className="text-gray-500 p-8 text-center border border-dashed rounded-lg">No jobs posted yet.</p>}
+                    {jobs.length === 0 && <p className="text-gray-500 p-8 text-center border border-dashed rounded-lg">No live jobs found in Firebase.</p>}
                   </div>
                 </>
               ) : (
@@ -245,16 +255,16 @@ export default function RecruiterDashboard() {
                   <header className="border-b border-gray-200 pb-4 mb-6">
                     <button 
                       onClick={() => setViewingCandidatesFor(null)}
-                      className="text-gray-500 hover:text-gray-900 mb-4 flex items-center text-sm font-medium transition-colors"
+                      className="text-gray-500 hover:text-gray-900 mb-4 flex items-center text-sm font-medium transition-colors cursor-pointer"
                     >
                       <ChevronLeft size={16} className="mr-1" /> Back to Jobs
                     </button>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">Candidates for {viewingJob.title}</h2>
-                    <p className="text-gray-500 mt-1">Review AI Orchestrator findings and status.</p>
+                    <p className="text-gray-500 mt-1">Review live AI Orchestrator findings from Firebase.</p>
                   </header>
 
                   <div className="space-y-4">
-                    {viewingJob.candidates && viewingJob.candidates.length > 0 ? viewingJob.candidates.map(candidate => (
+                    {viewingJob.candidates && viewingJob.candidates.length > 0 ? viewingJob.candidates.map((candidate: any) => (
                       <div key={candidate.id} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex items-start justify-between">
                         <div className="flex items-start space-x-4">
                           <div className="p-3 bg-gray-100 text-gray-600 rounded-full">
@@ -278,7 +288,7 @@ export default function RecruiterDashboard() {
                       </div>
                     )) : (
                       <div className="p-12 text-center border-2 border-dashed border-gray-200 rounded-xl text-gray-500">
-                        No candidates have applied to this role yet.
+                        No real candidates have applied to this role in Firebase yet.
                       </div>
                     )}
                   </div>
@@ -292,20 +302,20 @@ export default function RecruiterDashboard() {
           {activeTab === "dashboard" && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                <header className="border-b border-gray-200 pb-4">
-                  <h2 className="text-3xl font-bold tracking-tight text-gray-900">Recruitment Analytics</h2>
-                  <p className="text-gray-500 mt-1">Select a job below and view AI Orchestrator performance.</p>
+                  <h2 className="text-3xl font-bold tracking-tight text-gray-900">Live Analytics</h2>
+                  <p className="text-gray-500 mt-1">Select a job below and view real-time AI Orchestrator performance.</p>
               </header>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Job List Panel */}
                 <div className="col-span-1 bg-gray-50 rounded-xl border border-gray-200 p-4 h-max">
-                  <h3 className="font-semibold text-gray-800 mb-4 px-2">Posted Roles ({jobs.length})</h3>
+                  <h3 className="font-semibold text-gray-800 mb-4 px-2">Live Roles ({jobs.length})</h3>
                   <div className="space-y-2">
                     {jobs.map(job => (
                       <button 
                         key={job.id} 
                         onClick={() => setSelectedJobId(job.id)}
-                        className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${selectedJobId === job.id ? 'bg-white border-l-4 border-l-blue-600 border border-gray-200 shadow-sm text-gray-900' : 'text-gray-600 hover:bg-gray-100'}`}
+                        className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors cursor-pointer ${selectedJobId === job.id ? 'bg-white border-l-4 border-l-blue-600 border border-gray-200 shadow-sm text-gray-900' : 'text-gray-600 hover:bg-gray-100'}`}
                       >
                         {job.title}
                       </button>
@@ -317,12 +327,12 @@ export default function RecruiterDashboard() {
                 <div className="col-span-2 space-y-6">
                   {!selectedJobId ? (
                     <div className="flex items-center justify-center h-64 border-2 border-dashed border-gray-200 rounded-xl text-gray-400">
-                      &larr; Select a job to view its analytics
+                      &larr; Select a job to view its live Firebase analytics
                     </div>
                   ) : (
                     <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                       <h3 className="text-xl font-bold text-gray-900 border-b border-gray-100 pb-4 mb-6">
-                        Pipeline: {selectedJob?.title}
+                        Live Pipeline: {selectedJob?.title}
                       </h3>
                       <div className="grid grid-cols-2 gap-8">
                         <div>
@@ -341,7 +351,7 @@ export default function RecruiterDashboard() {
                           </div>
                           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                             <p className="text-sm text-gray-500 font-medium">Total Rejected by Orchestrator</p>
-                            <p className="text-2xl font-bold text-red-600 mt-1">{selectedJob?.rejected}</p>
+                            <p className="text-2xl font-bold text-red-600 mt-1">{selectedJob?.rejected || 0}</p>
                           </div>
                         </div>
                       </div>
