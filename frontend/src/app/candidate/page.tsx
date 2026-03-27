@@ -12,7 +12,7 @@ export default function CandidateDashboard() {
   const [phase, setPhase] = useState<"IDLE" | "SUBMIT" | "INTERVIEW">("IDLE");
   
   // Submit Form State
-  const [resumeText, setResumeText] = useState("");
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [githubUrl, setGithubUrl] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
 
@@ -35,11 +35,34 @@ export default function CandidateDashboard() {
     setPhase("SUBMIT");
   };
 
-  const handleStartSimulatedInterview = () => {
-    setPhase("INTERVIEW");
-    setMessages([
-      { role: "agent", text: `Hello! Thanks for applying to the ${selectedJob.title} position. Let's start the live interview. Based on your profile, what's a project you're most proud of and why?` }
-    ]);
+  const handleStartSimulatedInterview = async () => {
+    if (!resumeFile) {
+        alert("Please upload a resume first!");
+        return;
+    }
+    
+    // Switch to loading or starting phase internally
+    const formData = new FormData();
+    formData.append("job_id", selectedJob.id);
+    formData.append("candidate_id", "demo-cand-123");
+    formData.append("resume", resumeFile);
+    
+    try {
+        const res = await fetch("http://localhost:8000/api/phase1_discovery", {
+            method: "POST",
+            body: formData,
+        });
+        const data = await res.json();
+        console.log("Phase 1 Complete:", data);
+        
+        setPhase("INTERVIEW");
+        setMessages([
+          { role: "agent", text: `Hello! Thanks for applying. I've analyzed your resume using our Deep Discovery protocol. Let's start the live interview. Based on your profile, what's a project you're most proud of and why?` }
+        ]);
+    } catch (e) {
+        console.error("Failed to upload", e);
+        alert("Error uploading to backend. Check console.");
+    }
   };
 
   const handleSend = () => {
@@ -84,8 +107,8 @@ export default function CandidateDashboard() {
                 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Paste Resume (Quick Apply)</label>
-                    <textarea value={resumeText} onChange={e=>setResumeText(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 h-32" placeholder="Paste your resume text here..."></textarea>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Upload Resume (PDF/TXT)</label>
+                    <input type="file" onChange={e=>setResumeFile(e.target.files?.[0] || null)} className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 bg-white" accept=".pdf,.txt" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">GitHub URL</label>

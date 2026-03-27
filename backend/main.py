@@ -1,7 +1,8 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any
+import PyPDF2
 
 from agents.discovery import run_discovery_agent
 from agents.recruiter import generate_recruiter_test, evaluate_recruiter_test
@@ -48,9 +49,13 @@ def read_root():
     return {"status": "The Orchestrator API is Live and Agentic."}
 
 @app.post("/api/phase1_discovery")
-async def run_phase1(req: CandidateSubmission):
+async def run_phase1(
+    job_id: str = Form(...),
+    candidate_id: str = Form(...),
+    resume: UploadFile = File(None)
+):
     db = get_db()
-    job_ref = db.collection("jobs").document(req.job_id)
+    job_ref = db.collection("jobs").document(job_id)
     job_doc = job_ref.get()
     
     if not job_doc.exists:
@@ -58,8 +63,25 @@ async def run_phase1(req: CandidateSubmission):
         
     hr_preferences = job_doc.to_dict().get("aiPreferences", "Find top tech talent.")
     
+    resume_text = ""
+    if resume:
+        content = await resume.read()
+        if resume.filename.endswith('.pdf'):
+            from io import BytesIO
+            reader = PyPDF2.PdfReader(BytesIO(content))
+            for page in reader.pages:
+                resume_text += page.extract_text() + "\n"
+        else:
+            resume_text = content.decode('utf-8', errors='ignore')
+
+    candidate_data = {
+        "resume_text": resume_text,
+        "github_url": "",
+        "linkedin_url": ""
+    }
+    
     # 1. Discovery Agent
-    discovery_result = await run_discovery_agent(req.candidate_id, req.dict(), hr_preferences)
+    discovery_result = await run_discovery_agent(candidate_id, candidate_data, hr_preferences)
     
     # 2. Recruiter Test Generator
     reasoning = discovery_result.get("ranking_analysis", {}).get("reasoning", "")
@@ -71,7 +93,7 @@ async def run_phase1(req: CandidateSubmission):
         "status": "Screening",
         "discovery_analysis": discovery_result,
         "pending_test_questions": questions,
-        "name": req.candidate_id
+        "name": candidate_id
     }, merge=True)
     
     return {"questions": questions, "analysis_preview": discovery_result}
