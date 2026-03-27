@@ -12,6 +12,6 @@ body {
 }
 
 div, section, header, nav, main, aside, footer, form {
-  outline: 1px solid #e5e7eb;
+  outline: 1px solid #cbd5e1;
   outline-offset: -1px;
 }
