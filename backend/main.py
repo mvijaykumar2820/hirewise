@@ -9,8 +9,6 @@ from agents.recruiter import generate_recruiter_test, evaluate_recruiter_test
 from agents.interviewer import conduct_interview_turn
 from agents.decision_room import run_decision_room
 
-from firebase import get_db
-
 app = FastAPI(title="The Orchestrator API")
 
 app.add_middleware(
@@ -21,48 +19,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class CandidateSubmission(BaseModel):
-    job_id: str
-    candidate_id: str
-    resume_text: str = ""
-    github_url: str = ""
-    linkedin_url: str = ""
-
-class TestEvaluationRequest(BaseModel):
-    job_id: str
-    candidate_id: str
-    questions: List[str]
-    answers: List[str]
-
-class InterviewTurnRequest(BaseModel):
-    job_id: str
-    candidate_id: str
-    chat_history: List[Dict[str, str]]
-    latest_message: str
-
-class DecisionRoomRequest(BaseModel):
-    job_id: str
-    candidate_id: str
-
 @app.get("/")
 def read_root():
     return {"status": "The Orchestrator API is Live and Agentic."}
 
 @app.post("/api/phase1_discovery")
 async def run_phase1(
-    job_id: str = Form(...),
-    candidate_id: str = Form(...),
+    hr_preferences: str = Form("Find top tech talent."),
     resume: UploadFile = File(None)
 ):
-    db = get_db()
-    job_ref = db.collection("jobs").document(job_id)
-    job_doc = job_ref.get()
-    
-    if not job_doc.exists:
-        raise HTTPException(status_code=404, detail="Job not found")
-        
-    hr_preferences = job_doc.to_dict().get("aiPreferences", "Find top tech talent.")
-    
     resume_text = ""
     if resume:
         content = await resume.read()
@@ -80,42 +45,33 @@ async def run_phase1(
         "linkedin_url": ""
     }
     
-    # 1. Discovery Agent
-    discovery_result = await run_discovery_agent(candidate_id, candidate_data, hr_preferences)
-    
-    # 2. Recruiter Test Generator
+    discovery_result = await run_discovery_agent("candidate", candidate_data, hr_preferences)
     reasoning = discovery_result.get("ranking_analysis", {}).get("reasoning", "")
     questions = await generate_recruiter_test(reasoning)
     
-    # Update candidate in DB
-    cand_ref = db.collection("jobs").document(req.job_id).collection("candidates").document(req.candidate_id)
-    cand_ref.set({
-        "status": "Screening",
-        "discovery_analysis": discovery_result,
-        "pending_test_questions": questions,
-        "name": candidate_id
-    }, merge=True)
-    
     return {"questions": questions, "analysis_preview": discovery_result}
+
+
+class TestEvaluationRequest(BaseModel):
+    questions: List[str]
+    answers: List[str]
+
+class InterviewTurnRequest(BaseModel):
+    chat_history: List[Dict[str, str]]
+    latest_message: str
+
+class DecisionRoomRequest(BaseModel):
+    candidate_data: dict
+    transcript: str
 
 @app.post("/api/phase2_evaluate")
 async def run_phase2(req: TestEvaluationRequest):
-    # Evaluate answers
     report = await evaluate_recruiter_test(req.questions, req.answers)
-    
-    db = get_db()
-    cand_ref = db.collection("jobs").document(req.job_id).collection("candidates").document(req.candidate_id)
-    cand_ref.update({
-        "status": "Interview",
-        "test_eval_report": report
-    })
     return {"report": report}
 
 @app.post("/api/phase3_interview")
 async def run_phase3(req: InterviewTurnRequest):
     from langchain_core.messages import HumanMessage, AIMessage
-    
-    # Convert dict history to LangChain messages
     messages = []
     for m in req.chat_history:
         if m["type"] == "human":
@@ -128,22 +84,5 @@ async def run_phase3(req: InterviewTurnRequest):
 
 @app.post("/api/phase4_decision")
 async def run_phase4(req: DecisionRoomRequest):
-    db = get_db()
-    cand_ref = db.collection("jobs").document(req.job_id).collection("candidates").document(req.candidate_id)
-    cand_doc = cand_ref.get()
-    
-    if not cand_doc.exists:
-        raise HTTPException(status_code=404, detail="Candidate not found")
-        
-    data = cand_doc.to_dict()
-    transcript = "Simulated Live WebSocket Interview completed."
-    
-    decision_result = await run_decision_room(data, transcript)
-    
-    cand_ref.update({
-        "status": "Evaluated",
-        "decision_room_log": decision_result["agents_debate_log"],
-        "final_decision_xai": decision_result["final_decision_xai"]
-    })
-    
+    decision_result = await run_decision_room(req.candidate_data, req.transcript)
     return decision_result

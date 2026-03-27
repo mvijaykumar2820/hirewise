@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { collection, onSnapshot, query } from "firebase/firestore";
+import { collection, onSnapshot, query, setDoc, doc } from "firebase/firestore";
 import { db } from "../../firebase";
 
 export default function CandidateDashboard() {
@@ -43,8 +43,7 @@ export default function CandidateDashboard() {
     
     // Switch to loading or starting phase internally
     const formData = new FormData();
-    formData.append("job_id", selectedJob.id);
-    formData.append("candidate_id", "demo-cand-123");
+    formData.append("hr_preferences", selectedJob.aiPreferences || "Find top tech talent.");
     formData.append("resume", resumeFile);
     
     try {
@@ -54,6 +53,14 @@ export default function CandidateDashboard() {
         });
         const data = await res.json();
         console.log("Phase 1 Complete:", data);
+        
+        // Front-end handles database update directly
+        await setDoc(doc(db, "jobs", selectedJob.id, "candidates", "demo-cand-123"), {
+            status: "Screening",
+            discovery_analysis: data.analysis_preview,
+            pending_test_questions: data.questions,
+            name: "Candidate"
+        });
         
         setPhase("INTERVIEW");
         setMessages([
