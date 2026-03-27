@@ -36,7 +36,7 @@ export default function RecruiterDashboard() {
   
   // Create Job Form State
   const [showCreateJob, setShowCreateJob] = useState(false);
-  const [newJob, setNewJob] = useState({ title: "", salary: "", description: "" });
+  const [newJob, setNewJob] = useState({ title: "", salary: "", description: "", aiPreferences: "" });
 
   // Applications Tab View State
   const [viewingCandidatesFor, setViewingCandidatesFor] = useState<string | null>(null);
@@ -65,6 +65,7 @@ export default function RecruiterDashboard() {
         title: newJob.title,
         salary: newJob.salary || "TBD",
         description: newJob.description,
+        aiPreferences: newJob.aiPreferences,
         applicants: 0,
         passed: 0,
         rejected: 0,
@@ -72,7 +73,7 @@ export default function RecruiterDashboard() {
         createdAt: new Date().toISOString()
       });
       setShowCreateJob(false);
-      setNewJob({ title: "", salary: "", description: "" });
+      setNewJob({ title: "", salary: "", description: "", aiPreferences: "" });
     } catch (err) {
       console.error("Error creating job:", err);
     }
@@ -208,8 +209,12 @@ export default function RecruiterDashboard() {
                           </div>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Job Description (Optional)</label>
-                          <textarea value={newJob.description} onChange={e=>setNewJob({...newJob, description: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-gray-900 h-24" placeholder="Briefly describe the requirements..."></textarea>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Job Description</label>
+                          <textarea value={newJob.description} onChange={e=>setNewJob({...newJob, description: e.target.value})} required className="w-full p-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-gray-900 h-24" placeholder="Briefly describe the requirements..."></textarea>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">AI Screening Preferences (Optional)</label>
+                          <textarea value={newJob.aiPreferences} onChange={e=>setNewJob({...newJob, aiPreferences: e.target.value})} className="w-full p-2.5 border border-blue-200 bg-blue-50/50 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 h-24 text-gray-900 placeholder-blue-300" placeholder="e.g. Tell the AI what specifically to look for: 'Prioritize candidates with heavy Rust architecture experience...'"></textarea>
                         </div>
                         <div className="flex justify-end space-x-3">
                           <button type="button" onClick={() => setShowCreateJob(false)} className="px-4 py-2 font-medium text-gray-600 hover:text-gray-900">Cancel</button>
