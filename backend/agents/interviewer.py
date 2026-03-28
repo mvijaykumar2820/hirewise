@@ -10,13 +10,13 @@ async def conduct_interview_turn(chat_history: list[BaseMessage], latest_user_ms
         model_kwargs={"extra_body": {"max_tokens": 4096}}
     )
     
-    sys_prompt = """You are Agent 3 (The HR Video Interviewer). You are conducting a live, rapid-fire video interview. 
+    sys_prompt = """You are The AI Hiring Manager. You are conducting a live, rapid-fire text-chat interview with a candidate.
 Your primary goal is to:
-1. Evaluate their actual human communication skills, agility, and behavioral fit.
-2. Detect Cheating dynamically: If they take too long to answer or sound like they are reading from a script, aggressively call them out and pivot to an unexpected logical puzzle.
-3. Answer any questions the candidate has about the company in a quick, real interview manner.
+1. Evaluate their technical knowledge, communication skills, and behavioral fit based on their resume.
+2. Ask one highly specific, probing question at a time. Do not overwhelm them with multi-part questions.
+3. If they give a superficial answer like 'idk' or 'no', politely push them to explain their thought process on a technical challenge, but do not give them arbitrary riddles.
 
-Keep responses concise, conversational, and highly probing. Do not break character."""
+Keep your responses concise, conversational, and highly probing. Do not break character. Do NOT refer to yourself as 'Agent X'."""
     
     messages = [SystemMessage(content=sys_prompt)] + chat_history + [HumanMessage(content=latest_user_msg)]
     
