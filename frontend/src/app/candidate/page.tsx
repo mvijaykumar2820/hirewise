@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { collection, onSnapshot, query, setDoc, doc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "../../firebase";
 
 export default function CandidateDashboard() {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -41,7 +42,18 @@ export default function CandidateDashboard() {
         return;
     }
     
-    // Switch to loading or starting phase internally
+    // 1. Upload Resume to Firebase Storage
+    let resume_url = "";
+    try {
+        const fileRef = ref(storage, `resumes/${selectedJob.id}/demo-cand-123.pdf`);
+        await uploadBytes(fileRef, resumeFile);
+        resume_url = await getDownloadURL(fileRef);
+        console.log("Resume securely uploaded to Firebase!");
+    } catch (err) {
+        console.warn("Storage upload skipped or failed:", err);
+    }
+  
+    // 2. Send to Backend AI
     const formData = new FormData();
     formData.append("hr_preferences", selectedJob.aiPreferences || "Find top tech talent.");
     formData.append("resume", resumeFile);
@@ -52,13 +64,14 @@ export default function CandidateDashboard() {
             body: formData,
         });
         const data = await res.json();
-        console.log("Phase 1 Complete:", data);
+        console.log("Phase 1 AI Analysis Complete:", data);
         
-        // Front-end handles database update directly
+        // 3. Front-end handles database update directly with Resume Link
         await setDoc(doc(db, "jobs", selectedJob.id, "candidates", "demo-cand-123"), {
             status: "Screening",
             discovery_analysis: data.analysis_preview,
             pending_test_questions: data.questions,
+            resume_url: resume_url,
             name: "Candidate"
         });
         

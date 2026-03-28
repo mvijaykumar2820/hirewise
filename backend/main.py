@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any
 import PyPDF2
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from agents.discovery import run_discovery_agent
 from agents.recruiter import generate_recruiter_test, evaluate_recruiter_test
