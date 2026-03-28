@@ -60,9 +60,12 @@ async def run_phase1(
                 "first_message": "Thank you for sharing your resume. Unfortunately, based on the job requirements, we won't be moving forward with your application at this time."
             }
 
-        # If passed, generate a dynamic targeted opening question using the Phase 3 Interview Agent!
+        # If passed, generate dynamic targeted opening question using the Phase 3 Interview Agent!
         from langchain_core.messages import SystemMessage
-        from agents.interviewer import conduct_interview_turn
+        from backend.agents.interviewer import conduct_interview_turn
+        from backend.agents.recruiter import generate_recruiter_test
+        
+        questions_list = await generate_recruiter_test(reasoning)
         
         context_msg = SystemMessage(content=f"Background: Candidate scored {score}/100. AI Analysis: {reasoning}. Job Context: {hr_preferences}")
         dynamic_opening = await conduct_interview_turn(
@@ -73,6 +76,7 @@ async def run_phase1(
         return {
             "status": "accepted", 
             "analysis_preview": discovery_result, 
+            "recruiter_questions": "\n\n".join(questions_list),
             "first_message": dynamic_opening
         }
     except Exception as e:

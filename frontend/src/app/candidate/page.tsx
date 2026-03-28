@@ -10,7 +10,7 @@ export default function CandidateDashboard() {
   const [selectedJob, setSelectedJob] = useState<any>(null);
 
   // Application State
-  const [phase, setPhase] = useState<"IDLE" | "SUBMIT" | "EVALUATING" | "INTERVIEW">("IDLE");
+  const [phase, setPhase] = useState<"IDLE" | "SUBMIT" | "EVALUATING" | "RECRUITER_TEST" | "INTERVIEW">("IDLE");
   const [isUploading, setIsUploading] = useState(false);
   
   // Submit Form State
@@ -19,6 +19,8 @@ export default function CandidateDashboard() {
   const [linkedinUrl, setLinkedinUrl] = useState("");
 
   // Interview State
+  const [recruiterQuestions, setRecruiterQuestions] = useState<string>("");
+  const [testAnswers, setTestAnswers] = useState<string>("");
   const [messages, setMessages] = useState<{role: string, text: string}[]>([]);
   const [input, setInput] = useState("");
 
@@ -97,12 +99,14 @@ export default function CandidateDashboard() {
         await setDoc(doc(db, "jobs", selectedJob.id, "candidates", "demo-cand-123"), {
             status: data.status === "rejected" ? "Rejected" : "Screening",
             discovery_analysis: data.analysis_preview,
+            recruiter_questions: data.recruiter_questions || "",
             resume_url: resume_url,
             name: "Candidate"
         });
         
         setIsUploading(false);
-        setPhase("INTERVIEW");
+        setRecruiterQuestions(data.recruiter_questions || "");
+        setPhase("RECRUITER_TEST");
         setMessages([
           { role: "agent", text: data.first_message }
         ]);
@@ -219,6 +223,28 @@ export default function CandidateDashboard() {
                   <h2 className="text-2xl font-bold mb-3 text-gray-900">Round 1: AI Evaluation</h2>
                   <p className="text-gray-500 max-w-md mx-auto leading-relaxed">Please wait while our Deep Discovery Agent analyzes your non-traditional signals, project history, and experience...</p>
                 </div>
+              </div>
+            )}
+
+            {phase === "RECRUITER_TEST" && (
+              <div className="flex-1 space-y-6 animate-in fade-in zoom-in duration-500 bg-white p-6 rounded-lg border shadow-sm">
+                 <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Round 2: Written Test (Recruiter Agent)</h2>
+                 <p className="text-gray-600">Based on your background, our AI Recruiter has generated highly targeted screening questions. We need to verify your problem-solving approach.</p>
+                 <div className="bg-gray-50 border p-4 rounded-lg text-sm text-gray-800 whitespace-pre-wrap font-medium">
+                      {recruiterQuestions}
+                 </div>
+                 <textarea
+                   className="w-full h-32 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                   placeholder="Type your answers here..."
+                   value={testAnswers}
+                   onChange={e => setTestAnswers(e.target.value)}
+                 />
+                 <button 
+                   onClick={() => setPhase("INTERVIEW")}
+                   className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium shadow-sm transition-all w-full"
+                 >
+                   Submit Answers & Proceed to Live Interview
+                 </button>
               </div>
             )}
 
