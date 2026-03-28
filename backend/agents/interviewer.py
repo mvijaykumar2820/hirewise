@@ -6,7 +6,8 @@ async def conduct_interview_turn(chat_history: list[BaseMessage], latest_user_ms
     llm = ChatOpenAI(
         api_key=os.getenv("FEATHERLESS_API_KEY", "mock_key"),
         base_url="https://api.featherless.ai/v1",
-        model="meta-llama/Meta-Llama-3.1-405B-Instruct"
+        model="meta-llama/Meta-Llama-3.1-405B-Instruct",
+        max_tokens=4096
     )
     
     sys_prompt = """You are Agent 3 (The HR Video Interviewer). You are conducting a live, rapid-fire video interview. 

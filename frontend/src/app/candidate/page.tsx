@@ -11,6 +11,7 @@ export default function CandidateDashboard() {
 
   // Application State
   const [phase, setPhase] = useState<"IDLE" | "SUBMIT" | "INTERVIEW">("IDLE");
+  const [isUploading, setIsUploading] = useState(false);
   
   // Submit Form State
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -37,11 +38,14 @@ export default function CandidateDashboard() {
   };
 
   const handleStartSimulatedInterview = async () => {
+    if (!selectedJob) return;
     if (!resumeFile) {
         alert("Please upload a resume first!");
         return;
     }
     
+    setIsUploading(true);
+
     // 1. Upload Resume to Firebase Storage
     let resume_url = "";
     try {
@@ -75,13 +79,15 @@ export default function CandidateDashboard() {
             name: "Candidate"
         });
         
+        setIsUploading(false);
         setPhase("INTERVIEW");
         setMessages([
           { role: "agent", text: `Hello! Thanks for applying. I've analyzed your resume using our Deep Discovery protocol. Let's start the live interview. Based on your profile, what's a project you're most proud of and why?` }
         ]);
     } catch (e) {
-        console.error("Failed to upload", e);
-        alert("Error uploading to backend. Check console.");
+        console.error("Critical failure during analysis", e);
+        alert("Failed to analyze resume. Check backend logs.");
+        setIsUploading(false);
     }
   };
 
@@ -142,7 +148,13 @@ export default function CandidateDashboard() {
 
                 <div className="pt-4 flex gap-3">
                   <button onClick={() => setPhase("IDLE")} className="px-4 py-2 text-gray-600 font-medium hover:text-gray-900 transition">Cancel</button>
-                  <button onClick={handleStartSimulatedInterview} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition">Submit & Start Evaluation</button>
+                  <button 
+                    onClick={handleStartSimulatedInterview} 
+                    disabled={isUploading}
+                    className={`px-6 py-2 ${isUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium rounded-lg shadow-sm transition`}
+                  >
+                    {isUploading ? "Processing AI Analysis..." : "Submit & Start Evaluation"}
+                  </button>
                 </div>
               </div>
             )}

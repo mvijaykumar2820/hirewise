@@ -10,6 +10,7 @@ def get_featherless_llm(model="meta-llama/Meta-Llama-3.1-70B-Instruct"):
         api_key=os.getenv("FEATHERLESS_API_KEY", "mock_key"),
         base_url="https://api.featherless.ai/v1",
         model=model,
+        max_tokens=4096,
     )
 
 async def gather_non_traditional_signals(candidate_data: dict):

@@ -6,7 +6,8 @@ def get_featherless_llm(model="meta-llama/Meta-Llama-3.1-70B-Instruct"):
     return ChatOpenAI(
         api_key=os.getenv("FEATHERLESS_API_KEY", "mock_key"),
         base_url="https://api.featherless.ai/v1",
-        model=model 
+        model=model,
+        max_tokens=4096
     )
 
 async def generate_recruiter_test(resume_analysis: str):
