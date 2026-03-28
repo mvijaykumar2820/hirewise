@@ -1,0 +1,72 @@
+/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:246: FutureWarning: You are using a non-supported Python version (3.9.17). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+INFO:     Started server process [71598]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:64310 - "POST /api/phase1_discovery HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/uvicorn/protocols/http/httptools_impl.py", line 415, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/fastapi/applications.py", line 1138, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/fastapi/routing.py", line 121, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/fastapi/routing.py", line 107, in app
+    response = await f(request)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/fastapi/routing.py", line 426, in app
+    raw_response = await run_endpoint_function(
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/fastapi/routing.py", line 314, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/Users/vijaykumar/Documents/hirewise/backend/main.py", line 57, in run_phase1
+    db = get_db()
+  File "/Users/vijaykumar/Documents/hirewise/backend/firebase.py", line 14, in get_db
+    return firestore.client()
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/firebase_admin/firestore.py", line 65, in client
+    return fs_service.get_client(database_id)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/firebase_admin/firestore.py", line 80, in get_client
+    credentials = self._app.credential.get_credential()
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/firebase_admin/credentials.py", line 157, in get_credential
+    self._load_credential()
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/firebase_admin/credentials.py", line 174, in _load_credential
+    self._g_credential, self._project_id = google.auth.default(scopes=_scopes)
+  File "/Users/vijaykumar/Documents/hirewise/backend/venv/lib/python3.9/site-packages/google/auth/_default.py", line 752, in default
+    raise exceptions.DefaultCredentialsError(_CLOUD_SDK_MISSING_CREDENTIALS)
+google.auth.exceptions.DefaultCredentialsError: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [71598]

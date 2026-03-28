@@ -6,7 +6,7 @@ import { LayoutDashboard, Briefcase, Home as HomeIcon, LogOut, Plus, Users, Chec
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, addDoc, onSnapshot, query, orderBy, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuth } from "../../context/AuthContext";
 
@@ -71,6 +71,16 @@ export default function RecruiterDashboard() {
     });
     return () => unsub();
   }, [viewingCandidatesFor]);
+
+  const handleResetData = async () => {
+    if (!confirm("Are you sure? This will delete ALL candidate history from every job.")) return;
+    for (const job of jobs) {
+      const snap = await getDocs(collection(db, "jobs", job.id, "candidates"));
+      for (const d of snap.docs) await deleteDoc(d.ref);
+      await updateDoc(doc(db, "jobs", job.id), { applicants: 0, passed: 0 });
+    }
+    alert("✅ All candidate data cleared! Counters reset.");
+  };
 
   const handleCreateJob = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,9 +183,14 @@ export default function RecruiterDashboard() {
           {/* HOME TAB */}
           {activeTab === "home" && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <header>
-                <h2 className="text-4xl font-bold tracking-tight text-gray-900">Welcome Back</h2>
-                <p className="text-gray-500 mt-2 text-lg">Here is a quick overview of your live recruitment pipeline.</p>
+              <header className="flex items-end justify-between">
+                <div>
+                  <h2 className="text-4xl font-bold tracking-tight text-gray-900">Welcome Back</h2>
+                  <p className="text-gray-500 mt-2 text-lg">Here is a quick overview of your live recruitment pipeline.</p>
+                </div>
+                <button onClick={handleResetData} className="text-sm text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg font-medium transition-colors border border-red-200">
+                  🗑 Reset Demo Data
+                </button>
               </header>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-sm">
@@ -376,6 +391,61 @@ export default function RecruiterDashboard() {
                       {viewingCandidate.round2_status === "pending" && (
                         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
                           <p className="text-yellow-700 font-medium">⏳ Round 2 Written Test is pending — candidate has not submitted answers yet.</p>
+                        </div>
+                      )}
+
+                      {/* Round 3: Live Interview */}
+                      {viewingCandidate.round3_status === "completed" && (
+                        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-lg font-bold text-gray-900">Round 3: Live AI Video Interview</h4>
+                            <div className="flex items-center gap-3">
+                              <span className={`px-3 py-1 text-xs font-bold rounded-full ${viewingCandidate.round3_cheating_risk === 'High' ? 'bg-red-100 text-red-700' : viewingCandidate.round3_cheating_risk === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                                Cheating: {viewingCandidate.round3_cheating_risk || "N/A"}
+                              </span>
+                              <span className={`px-3 py-1 text-xs font-bold rounded-full ${viewingCandidate.round3_ai_detection === 'High' ? 'bg-red-100 text-red-700' : viewingCandidate.round3_ai_detection === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                                AI Detection: {viewingCandidate.round3_ai_detection || "N/A"}
+                              </span>
+                              <span className={`px-3 py-1 text-xs font-bold rounded-full ${(viewingCandidate.round3_score || 0) >= 50 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                Score: {viewingCandidate.round3_score || 0}/100
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Meta Info */}
+                          <div className="flex gap-4 mb-4 text-xs text-gray-500">
+                            <span>🕐 Started: {viewingCandidate.round3_started_at ? new Date(viewingCandidate.round3_started_at).toLocaleString() : "N/A"}</span>
+                            <span>🏁 Ended: {viewingCandidate.round3_ended_at ? new Date(viewingCandidate.round3_ended_at).toLocaleString() : "N/A"}</span>
+                            <span className={`font-bold ${(viewingCandidate.round3_tab_switches || 0) > 2 ? 'text-red-600' : 'text-green-600'}`}>
+                              ⚠ Tab Switches: {viewingCandidate.round3_tab_switches || 0}
+                            </span>
+                          </div>
+
+                          {/* Transcript */}
+                          <div className="bg-gray-50 border rounded-lg p-4 space-y-3 max-h-[400px] overflow-y-auto">
+                            <p className="font-semibold text-gray-800 text-sm mb-2">💬 Full Interview Transcript:</p>
+                            {viewingCandidate.round3_transcript?.map((msg: any, i: number) => (
+                              <div key={i} className={`flex ${msg.role === 'ai' ? 'justify-start' : 'justify-end'}`}>
+                                <div className={`${msg.role === 'ai' ? 'bg-white border-gray-200 text-gray-800' : 'bg-blue-50 border-blue-200 text-gray-800'} border p-3 rounded-lg max-w-[80%] text-sm`}>
+                                  <p className="font-semibold text-xs mb-1 text-gray-500">{msg.role === 'ai' ? '🤖 AI Interviewer' : '👤 Candidate'}</p>
+                                  {msg.text}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Report */}
+                          {viewingCandidate.round3_report && (
+                            <div className="bg-gray-50 border rounded-lg p-4 mt-4">
+                              <p className="font-semibold text-gray-800 text-sm mb-2">📋 AI Evaluation Report:</p>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{viewingCandidate.round3_report}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {viewingCandidate.round2_status === "completed" && !viewingCandidate.round3_status && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
+                          <p className="text-yellow-700 font-medium">⏳ Round 3 Live Interview is pending — candidate has not started the interview yet.</p>
                         </div>
                       )}
                     </div>

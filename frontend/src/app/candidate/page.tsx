@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { collection, onSnapshot, query, setDoc, doc, updateDoc, increment } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../../firebase";
@@ -13,7 +13,7 @@ export default function CandidateDashboard() {
   const [selectedJob, setSelectedJob] = useState<any>(null);
 
   // Application State
-  const [phase, setPhase] = useState<"IDLE" | "SUBMIT" | "EVALUATING" | "REJECTED" | "RECRUITER_TEST" | "INTERVIEW">("IDLE");
+  const [phase, setPhase] = useState<"IDLE" | "SUBMIT" | "EVALUATING" | "REJECTED" | "RECRUITER_TEST" | "INTERVIEW_SETUP" | "INTERVIEW" | "COMPLETED">("IDLE");
   const [isUploading, setIsUploading] = useState(false);
   
   // Submit Form State
@@ -27,6 +27,19 @@ export default function CandidateDashboard() {
   const [rejectionMessage, setRejectionMessage] = useState<string>("");
   const [messages, setMessages] = useState<{role: string, text: string}[]>([]);
   const [input, setInput] = useState("");
+
+  // Video Interview State
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState("");
+  const [tabSwitches, setTabSwitches] = useState(0);
+  const [interviewStartedAt, setInterviewStartedAt] = useState<string>("");
+  const [isAiThinking, setIsAiThinking] = useState(false);
+  const [interviewEnded, setInterviewEnded] = useState(false);
+  const [decisionReport, setDecisionReport] = useState<string>("");
 
   useEffect(() => {
     const q = query(collection(db, "jobs"));
@@ -173,47 +186,151 @@ export default function CandidateDashboard() {
         status: "Round 2 Completed",
       }, { merge: true });
       
-      setPhase("INTERVIEW");
+      setPhase("INTERVIEW_SETUP");
     } catch (e: any) {
       console.error("Round 2 evaluation failed:", e);
-      // Still proceed to interview but mark as unevaluated
-      setPhase("INTERVIEW");
+      setPhase("INTERVIEW_SETUP");
     }
   };
 
-  const handleSend = async () => {
-    if (!input) return;
-    const userMessage = { role: "user", text: input };
-    setMessages(prev => [...prev, userMessage]);
-    setInput("");
-    
-    const payload = {
-        chat_history: messages.map(m => ({
-            type: m.role === "user" ? "human" : "ai",
-            content: m.text
-        })),
-        latest_message: input
+  // --- VIDEO INTERVIEW LOGIC ---
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      setCameraReady(true);
+    } catch (err) {
+      alert("Camera/Mic permission is required for the interview. Please allow access and try again.");
+    }
+  };
+
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    setCameraReady(false);
+  };
+
+  const startInterview = () => {
+    setPhase("INTERVIEW");
+    setInterviewStartedAt(new Date().toISOString());
+    setMessages([{ role: "agent", text: "Hello! I'm your AI Hiring Manager. Welcome to the live interview. Let's start — can you briefly introduce yourself and tell me about the most challenging project you've worked on?" }]);
+  };
+
+  // Tab-switch cheating detection
+  useEffect(() => {
+    if (phase !== "INTERVIEW") return;
+    const handler = () => {
+      if (document.hidden) setTabSwitches(prev => prev + 1);
     };
+    document.addEventListener("visibilitychange", handler);
+    return () => document.removeEventListener("visibilitychange", handler);
+  }, [phase]);
+
+  // Speech Recognition
+  const toggleListening = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) { alert("Speech Recognition not supported. Please use Chrome."); return; }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    recognition.onresult = (event: any) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setLiveTranscript(transcript);
+    };
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  }, [isListening]);
+
+  const sendVoiceMessage = async () => {
+    const text = liveTranscript.trim() || input.trim();
+    if (!text) return;
+    recognitionRef.current?.stop();
+    setIsListening(false);
+    setLiveTranscript("");
+    setInput("");
+
+    const userMsg = { role: "user", text };
+    setMessages(prev => [...prev, userMsg]);
+    setIsAiThinking(true);
 
     try {
-        const res = await fetch("http://127.0.0.1:8000/api/phase3_interview", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-        
-        if (!res.ok) {
-            const rawError = await res.text();
-            console.error("Backend AI Error HTTP Trace:", rawError);
-            throw new Error(`Backend AI error: ${rawError}`);
-        }
-        
-        const data = await res.json();
-        setMessages(prev => [...prev, { role: "agent", text: data.response }]);
+      const res = await fetch("http://127.0.0.1:8000/api/phase3_interview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_history: messages.map(m => ({ type: m.role === "user" ? "human" : "ai", content: m.text })),
+          latest_message: text
+        })
+      });
+      const data = await res.json();
+      setMessages(prev => [...prev, { role: "agent", text: data.response }]);
+
+      // Check if interview naturally ended
+      if (data.response?.toLowerCase().includes("interview is now complete")) {
+        setInterviewEnded(true);
+      }
     } catch (e: any) {
-        console.error("Interview error:", e);
-        setMessages(prev => [...prev, { role: "agent", text: `Network Error: ${e.message}` }]);
+      setMessages(prev => [...prev, { role: "agent", text: `Error: ${e.message}` }]);
+    } finally {
+      setIsAiThinking(false);
     }
+  };
+
+  const handleEndInterview = async () => {
+    stopCamera();
+    const transcript = messages.map(m => ({ role: m.role === "agent" ? "ai" : "candidate", text: m.text }));
+    
+    // Save transcript to Firestore immediately
+    await setDoc(doc(db, "jobs", selectedJob.id, "candidates", user!.uid), {
+      round3_status: "completed",
+      round3_transcript: transcript,
+      round3_tab_switches: tabSwitches,
+      round3_started_at: interviewStartedAt,
+      round3_ended_at: new Date().toISOString(),
+      status: "All Rounds Completed",
+    }, { merge: true });
+
+    // Call backend to evaluate the interview
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/phase3_evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript, tab_switches: tabSwitches })
+      });
+      const data = await res.json();
+      const report = data.report || "";
+
+      const scoreMatch = report.match(/Score:\s*(\d+)/i);
+      const aiDetMatch = report.match(/AI_Detection:\s*(\w+)/i);
+      const cheatingMatch = report.match(/Cheating_Risk:\s*(\w+)/i);
+
+      await setDoc(doc(db, "jobs", selectedJob.id, "candidates", user!.uid), {
+        round3_score: scoreMatch ? parseInt(scoreMatch[1]) : 0,
+        round3_ai_detection: aiDetMatch ? aiDetMatch[1] : "Unknown",
+        round3_cheating_risk: cheatingMatch ? cheatingMatch[1] : "Unknown",
+        round3_report: report,
+      }, { merge: true });
+
+      setDecisionReport(report);
+    } catch (e) {
+      console.error("Interview evaluation failed:", e);
+    }
+
+    setPhase("COMPLETED");
   };
 
   if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
@@ -338,30 +455,121 @@ export default function CandidateDashboard() {
               </div>
             )}
 
+            {phase === "INTERVIEW_SETUP" && (
+              <div className="flex-1 space-y-6 animate-in fade-in zoom-in duration-500 bg-white p-6 rounded-lg border shadow-sm">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Round 3: Live AI Interview</h2>
+                <p className="text-gray-600">You'll be interviewed by our AI Hiring Manager via your webcam and microphone. Please enable both to begin.</p>
+                
+                <div className="bg-gray-900 rounded-xl overflow-hidden aspect-video relative">
+                  <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+                  {!cameraReady && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                      <svg className="w-16 h-16 text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                      <p className="text-gray-400">Camera preview will appear here</p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex gap-3">
+                  {!cameraReady ? (
+                    <button onClick={startCamera} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2">
+                      🎥 Enable Camera & Microphone
+                    </button>
+                  ) : (
+                    <button onClick={startInterview} className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 animate-pulse">
+                      🚀 Start Interview
+                    </button>
+                  )}
+                </div>
+                {cameraReady && <p className="text-green-600 text-sm font-medium text-center">✅ Camera and microphone are ready!</p>}
+              </div>
+            )}
+
             {phase === "INTERVIEW" && (
-              <>
-                <div className="flex-1 bg-gray-50 border border-gray-200 rounded p-4 mb-4 overflow-y-auto space-y-4">
-                  {messages.map((msg, i) => (
-                    <div key={i} className={`flex ${msg.role === 'agent' ? 'justify-start' : 'justify-end'}`}>
-                      <div className={`${msg.role === 'agent' ? 'bg-white border-gray-200 text-gray-800' : 'bg-blue-600 text-white'} border p-3 rounded-lg max-w-[80%] shadow-sm`}>
-                        {msg.role === 'agent' && <p className="font-semibold text-xs text-gray-500 mb-1">Hiring Manager Agent</p>}
-                        {msg.text}
+              <div className="flex-1 flex flex-col space-y-4">
+                {/* Video + Chat Split */}
+                <div className="flex gap-4">
+                  {/* Webcam Feed */}
+                  <div className="w-48 flex-shrink-0">
+                    <div className="bg-gray-900 rounded-xl overflow-hidden aspect-[3/4] relative">
+                      <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+                      <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
+                        <span className="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">● LIVE</span>
+                        {tabSwitches > 0 && <span className="bg-yellow-500 text-black text-xs px-2 py-0.5 rounded-full font-bold">⚠ {tabSwitches} tab switches</span>}
                       </div>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Chat Area */}
+                  <div className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-4 overflow-y-auto space-y-3 max-h-[400px]">
+                    {messages.map((msg, i) => (
+                      <div key={i} className={`flex ${msg.role === 'agent' ? 'justify-start' : 'justify-end'}`}>
+                        <div className={`${msg.role === 'agent' ? 'bg-white border-gray-200 text-gray-800' : 'bg-blue-600 text-white'} border p-3 rounded-lg max-w-[85%] shadow-sm text-sm`}>
+                          {msg.role === 'agent' && <p className="font-semibold text-xs text-gray-500 mb-1">🤖 AI Hiring Manager</p>}
+                          {msg.text}
+                        </div>
+                      </div>
+                    ))}
+                    {isAiThinking && (
+                      <div className="flex justify-start">
+                        <div className="bg-white border border-gray-200 p-3 rounded-lg shadow-sm">
+                          <div className="flex items-center gap-1"><span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay:'0ms'}}></span><span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay:'150ms'}}></span><span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay:'300ms'}}></span></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Live Transcript Preview */}
+                {liveTranscript && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-gray-700 italic">
+                    🎤 <span className="font-medium">Hearing:</span> "{liveTranscript}"
+                  </div>
+                )}
+
+                {/* Controls */}
                 <div className="flex gap-2">
+                  <button 
+                    onClick={toggleListening}
+                    className={`px-4 py-3 rounded-lg font-medium transition-all flex items-center gap-2 ${isListening ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse' : 'bg-gray-800 hover:bg-gray-900 text-white'}`}
+                  >
+                    {isListening ? '⏹ Stop' : '🎤 Speak'}
+                  </button>
                   <input 
                     type="text" 
-                    className="flex-1 p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                    placeholder="Type your response..." 
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                    className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" 
+                    placeholder="Or type your answer..." 
+                    value={liveTranscript || input}
+                    onChange={(e) => { setInput(e.target.value); setLiveTranscript(""); }}
+                    onKeyDown={(e) => e.key === 'Enter' && sendVoiceMessage()}
                   />
-                  <button onClick={handleSend} className="bg-blue-600 hover:bg-blue-700 text-white px-6 font-medium rounded transition-colors">Send</button>
+                  <button onClick={sendVoiceMessage} disabled={isAiThinking} className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-5 font-medium rounded-lg transition-colors text-sm">Send</button>
                 </div>
-              </>
+
+                {/* End Interview */}
+                {(messages.length >= 6 || interviewEnded) && (
+                  <button onClick={handleEndInterview} className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-medium transition-all">
+                    🏁 End Interview & Get AI Verdict
+                  </button>
+                )}
+              </div>
+            )}
+
+            {phase === "COMPLETED" && (
+              <div className="flex-1 space-y-6 animate-in fade-in zoom-in duration-500 bg-white p-6 rounded-lg border shadow-sm text-center">
+                <div className="text-5xl mb-4">🎉</div>
+                <h2 className="text-2xl font-bold text-gray-900">All Rounds Completed!</h2>
+                <p className="text-gray-600">Your interview data has been submitted to the AI Decision Room. The hiring team will review your performance across all 3 rounds.</p>
+                {decisionReport && (
+                  <div className="bg-gray-50 border rounded-lg p-4 text-left text-sm text-gray-700 whitespace-pre-wrap mt-4">
+                    <p className="font-bold text-gray-900 mb-2">📋 AI Interview Evaluation:</p>
+                    {decisionReport}
+                  </div>
+                )}
+                <button onClick={() => { setPhase("IDLE"); setSelectedJob(null); setMessages([]); }} className="mt-4 px-6 py-3 bg-gray-800 hover:bg-gray-900 text-white rounded-lg font-medium transition-all">
+                  ← Back to Job Board
+                </button>
+              </div>
             )}
           </main>
         </div>

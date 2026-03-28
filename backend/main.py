@@ -9,7 +9,7 @@ load_dotenv()
 
 from agents.discovery import run_discovery_agent
 from agents.recruiter import generate_recruiter_test, evaluate_recruiter_test
-from agents.interviewer import conduct_interview_turn
+from agents.interviewer import conduct_interview_turn, evaluate_interview
 from agents.decision_room import run_decision_room
 
 app = FastAPI(title="The Orchestrator API")
@@ -99,6 +99,10 @@ class DecisionRoomRequest(BaseModel):
     candidate_data: dict
     transcript: str
 
+class InterviewEvalRequest(BaseModel):
+    transcript: List[Dict[str, str]]
+    tab_switches: int = 0
+
 @app.post("/api/phase2_evaluate")
 async def run_phase2(req: TestEvaluationRequest):
     report = await evaluate_recruiter_test(req.questions, req.answers)
@@ -122,6 +126,16 @@ async def run_phase3(req: InterviewTurnRequest):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Phase 3 AI Interview failed: {str(e)}")
 
+@app.post("/api/phase3_evaluate")
+async def run_phase3_evaluate(req: InterviewEvalRequest):
+    try:
+        report = await evaluate_interview(req.transcript, req.tab_switches)
+        return {"report": report}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Phase 3 Evaluation failed: {str(e)}")
+
 @app.post("/api/phase4_decision")
 async def run_phase4(req: DecisionRoomRequest):
     try:
@@ -131,3 +145,18 @@ async def run_phase4(req: DecisionRoomRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Phase 4 Decision Room failed: {str(e)}")
+
+@app.post("/api/cleanup")
+async def cleanup_candidates():
+    """Temp endpoint: Delete all candidate data from all jobs, reset counters."""
+    from firebase import get_db
+    fdb = get_db()
+    deleted = 0
+    jobs = fdb.collection("jobs").stream()
+    for job in jobs:
+        cands = fdb.collection("jobs").document(job.id).collection("candidates").stream()
+        for c in cands:
+            c.reference.delete()
+            deleted += 1
+        job.reference.update({"applicants": 0, "passed": 0})
+    return {"status": "cleaned", "candidates_deleted": deleted}
