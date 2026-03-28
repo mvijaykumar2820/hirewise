@@ -68,9 +68,9 @@ async def run_phase1(
         from agents.interviewer import conduct_interview_turn
         from agents.recruiter import generate_recruiter_test
         
-        questions_list = await generate_recruiter_test(reasoning)
+        questions_list = await generate_recruiter_test(reasoning, resume_text)
         
-        context_msg = SystemMessage(content=f"Background: Candidate scored {score}/100. AI Analysis: {reasoning}. Job Context: {hr_preferences}")
+        context_msg = SystemMessage(content=f"Background: Candidate passed screening. AI Analysis: {reasoning}. Job Context: {hr_preferences}\n\nCandidate Raw Resume:\n{resume_text}")
         dynamic_opening = await conduct_interview_turn(
             chat_history=[context_msg],
             latest_user_msg="Please introduce yourself briefly as the AI Hiring Manager and ask exactly one highly personalized, probing question based directly on my resume analysis to start the interview."

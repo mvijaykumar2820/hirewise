@@ -10,13 +10,13 @@ def get_featherless_llm(model="meta-llama/Meta-Llama-3.1-70B-Instruct"):
         model_kwargs={"extra_body": {"max_tokens": 4096}}
     )
 
-async def generate_recruiter_test(resume_analysis: str):
+async def generate_recruiter_test(resume_analysis: str, resume_text: str = ""):
     llm = get_featherless_llm()
-    sys_prompt = "You are Agent 2 (The Technical Recruiter). Based on the candidate's discovery analysis, generate EXACTLY 3 highly targeted thinking/problem-solving questions. These should NOT be easily solvable by basic AI. Force them to explain their unique approach."
+    sys_prompt = "You are Agent 2 (The Technical Recruiter). Generate EXACTLY 3 highly targeted, deep-dive technical questions. You MUST base your questions strictly on the actual projects and technologies the candidate listed in their Resume. Do NOT quiz them on the Job Description if they don't have that experience. Force them to explain the unique architecture of their specific past projects."
     
     response = await llm.ainvoke([
         SystemMessage(content=sys_prompt),
-        HumanMessage(content=f"Discovery Analysis:\n{resume_analysis}\n\nGenerate the 3 questions as a numbered list.")
+        HumanMessage(content=f"Discovery Analysis:\n{resume_analysis}\n\nCandidate Resume:\n{resume_text}\n\nGenerate the 3 questions as a numbered list.")
     ])
     
     questions = [q.strip() for q in response.content.split('\n') if q.strip() and q.strip()[0].isdigit()]
