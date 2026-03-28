@@ -10,7 +10,7 @@ export default function CandidateDashboard() {
   const [selectedJob, setSelectedJob] = useState<any>(null);
 
   // Application State
-  const [phase, setPhase] = useState<"IDLE" | "SUBMIT" | "INTERVIEW">("IDLE");
+  const [phase, setPhase] = useState<"IDLE" | "SUBMIT" | "EVALUATING" | "INTERVIEW">("IDLE");
   const [isUploading, setIsUploading] = useState(false);
   
   // Submit Form State
@@ -45,6 +45,7 @@ export default function CandidateDashboard() {
     }
     
     setIsUploading(true);
+    setPhase("EVALUATING");
 
     // 1. Upload Resume to Firebase Storage
     let resume_url = "";
@@ -88,6 +89,7 @@ export default function CandidateDashboard() {
         console.error("Critical failure during analysis", e);
         alert("Failed to analyze resume. Check backend logs.");
         setIsUploading(false);
+        setPhase("SUBMIT");
     }
   };
 
@@ -155,6 +157,22 @@ export default function CandidateDashboard() {
                   >
                     {isUploading ? "Processing AI Analysis..." : "Submit & Start Evaluation"}
                   </button>
+                </div>
+              </div>
+            )}
+
+            {phase === "EVALUATING" && (
+              <div className="flex-1 flex flex-col items-center justify-center text-gray-800 space-y-6 animate-in fade-in zoom-in duration-500">
+                <div className="relative w-24 h-24 mb-4">
+                  <div className="absolute inset-0 border-4 border-gray-100 rounded-full"></div>
+                  <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold mb-3 text-gray-900">Round 1: AI Evaluation</h2>
+                  <p className="text-gray-500 max-w-md mx-auto leading-relaxed">Please wait while our Deep Discovery Agent analyzes your non-traditional signals, project history, and experience...</p>
                 </div>
               </div>
             )}
