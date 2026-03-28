@@ -62,8 +62,8 @@ async def run_phase1(
 
         # If passed, generate dynamic targeted opening question using the Phase 3 Interview Agent!
         from langchain_core.messages import SystemMessage
-        from backend.agents.interviewer import conduct_interview_turn
-        from backend.agents.recruiter import generate_recruiter_test
+        from agents.interviewer import conduct_interview_turn
+        from agents.recruiter import generate_recruiter_test
         
         questions_list = await generate_recruiter_test(reasoning)
         
