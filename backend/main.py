@@ -50,10 +50,31 @@ async def run_phase1(
         }
         
         discovery_result = await run_discovery_agent("candidate", candidate_data, hr_preferences)
+        score = discovery_result.get("ranking_analysis", {}).get("potential_score", 50)
         reasoning = discovery_result.get("ranking_analysis", {}).get("reasoning", "")
-        questions = await generate_recruiter_test(reasoning)
         
-        return {"questions": questions, "analysis_preview": discovery_result}
+        if score < 50:
+            return {
+                "status": "rejected", 
+                "analysis_preview": discovery_result,
+                "first_message": "Thank you for sharing your resume. Unfortunately, based on the job requirements, we won't be moving forward with your application at this time."
+            }
+
+        # If passed, generate a dynamic targeted opening question using the Phase 3 Interview Agent!
+        from langchain_core.messages import SystemMessage
+        from agents.interviewer import conduct_interview_turn
+        
+        context_msg = SystemMessage(content=f"Background: Candidate scored {score}/100. AI Analysis: {reasoning}. Job Context: {hr_preferences}")
+        dynamic_opening = await conduct_interview_turn(
+            chat_history=[context_msg],
+            latest_user_msg="Please introduce yourself briefly as the AI Hiring Manager and ask exactly one highly personalized, probing question based directly on my resume analysis to start the interview."
+        )
+        
+        return {
+            "status": "accepted", 
+            "analysis_preview": discovery_result, 
+            "first_message": dynamic_opening
+        }
     except Exception as e:
         import traceback
         traceback.print_exc()

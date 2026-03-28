@@ -69,7 +69,8 @@ export default function CandidateDashboard() {
     // 2. Automatically trigger AI processing in parallel!
     console.log("Sending PDF to stateless AI Backend (FastAPI)...");
     const formData = new FormData();
-    formData.append("hr_preferences", selectedJob.aiPreferences || "Find top tech talent.");
+    const combinedPreferences = `Job Description: ${selectedJob.description}\n\nAdditional Requirements: ${selectedJob.aiPreferences || ""}`;
+    formData.append("hr_preferences", combinedPreferences);
     formData.append("resume", resumeFile);
     
     try {
@@ -94,9 +95,8 @@ export default function CandidateDashboard() {
         
         // 3. Front-end handles database update directly with Resume Link
         await setDoc(doc(db, "jobs", selectedJob.id, "candidates", "demo-cand-123"), {
-            status: "Screening",
+            status: data.status === "rejected" ? "Rejected" : "Screening",
             discovery_analysis: data.analysis_preview,
-            pending_test_questions: data.questions,
             resume_url: resume_url,
             name: "Candidate"
         });
@@ -104,7 +104,7 @@ export default function CandidateDashboard() {
         setIsUploading(false);
         setPhase("INTERVIEW");
         setMessages([
-          { role: "agent", text: `Hello! Thanks for applying. I've analyzed your resume using our Deep Discovery protocol. Let's start the live interview. Based on your profile, what's a project you're most proud of and why?` }
+          { role: "agent", text: data.first_message }
         ]);
     } catch (e) {
         console.error("Critical failure during analysis", e);
