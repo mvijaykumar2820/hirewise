@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { collection, onSnapshot, query, setDoc, doc } from "firebase/firestore";
+import { collection, onSnapshot, query, setDoc, doc, updateDoc, increment } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../../firebase";
 import { useAuth } from "../../context/AuthContext";
@@ -118,6 +118,12 @@ export default function CandidateDashboard() {
             photoURL: user!.photoURL || "",
             appliedAt: new Date().toISOString(),
             round2_status: "pending",
+        });
+        
+        // Increment counters on parent job doc
+        await updateDoc(doc(db, "jobs", selectedJob.id), {
+            applicants: increment(1),
+            passed: increment(1),
         });
         
         setIsUploading(false);
