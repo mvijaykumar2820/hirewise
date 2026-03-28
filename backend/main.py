@@ -79,18 +79,28 @@ async def run_phase2(req: TestEvaluationRequest):
 
 @app.post("/api/phase3_interview")
 async def run_phase3(req: InterviewTurnRequest):
-    from langchain_core.messages import HumanMessage, AIMessage
-    messages = []
-    for m in req.chat_history:
-        if m["type"] == "human":
-            messages.append(HumanMessage(content=m["content"]))
-        else:
-            messages.append(AIMessage(content=m["content"]))
-            
-    response_text = await conduct_interview_turn(messages, req.latest_message)
-    return {"response": response_text}
+    try:
+        from langchain_core.messages import HumanMessage, AIMessage
+        messages = []
+        for m in req.chat_history:
+            if m.get("type") in ["human", "user"]:
+                messages.append(HumanMessage(content=m["content"]))
+            else:
+                messages.append(AIMessage(content=m["content"]))
+                
+        response_text = await conduct_interview_turn(messages, req.latest_message)
+        return {"response": response_text}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Phase 3 AI Interview failed: {str(e)}")
 
 @app.post("/api/phase4_decision")
 async def run_phase4(req: DecisionRoomRequest):
-    decision_result = await run_decision_room(req.candidate_data, req.transcript)
-    return decision_result
+    try:
+        decision_result = await run_decision_room(req.candidate_data, req.transcript)
+        return decision_result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Phase 4 Decision Room failed: {str(e)}")

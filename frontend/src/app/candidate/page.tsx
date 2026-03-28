@@ -135,13 +135,17 @@ export default function CandidateDashboard() {
             body: JSON.stringify(payload)
         });
         
-        if (!res.ok) throw new Error("Backend AI error");
+        if (!res.ok) {
+            const rawError = await res.text();
+            console.error("Backend AI Error HTTP Trace:", rawError);
+            throw new Error(`Backend AI error: ${rawError}`);
+        }
         
         const data = await res.json();
         setMessages(prev => [...prev, { role: "agent", text: data.response }]);
-    } catch (e) {
+    } catch (e: any) {
         console.error("Interview error:", e);
-        setMessages(prev => [...prev, { role: "agent", text: "Network Error: Could you repeat your last point?" }]);
+        setMessages(prev => [...prev, { role: "agent", text: `Network Error: ${e.message}` }]);
     }
   };
 
