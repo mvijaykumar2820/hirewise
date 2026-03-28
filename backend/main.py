@@ -31,28 +31,33 @@ async def run_phase1(
     hr_preferences: str = Form("Find top tech talent."),
     resume: UploadFile = File(None)
 ):
-    resume_text = ""
-    if resume:
-        content = await resume.read()
-        if resume.filename.endswith('.pdf'):
-            from io import BytesIO
-            reader = PyPDF2.PdfReader(BytesIO(content))
-            for page in reader.pages:
-                resume_text += page.extract_text() + "\n"
-        else:
-            resume_text = content.decode('utf-8', errors='ignore')
+    try:
+        resume_text = ""
+        if resume:
+            content = await resume.read()
+            if resume.filename.endswith('.pdf'):
+                from io import BytesIO
+                reader = PyPDF2.PdfReader(BytesIO(content))
+                for page in reader.pages:
+                    resume_text += page.extract_text() + "\n"
+            else:
+                resume_text = content.decode('utf-8', errors='ignore')
 
-    candidate_data = {
-        "resume_text": resume_text,
-        "github_url": "",
-        "linkedin_url": ""
-    }
-    
-    discovery_result = await run_discovery_agent("candidate", candidate_data, hr_preferences)
-    reasoning = discovery_result.get("ranking_analysis", {}).get("reasoning", "")
-    questions = await generate_recruiter_test(reasoning)
-    
-    return {"questions": questions, "analysis_preview": discovery_result}
+        candidate_data = {
+            "resume_text": resume_text,
+            "github_url": "",
+            "linkedin_url": ""
+        }
+        
+        discovery_result = await run_discovery_agent("candidate", candidate_data, hr_preferences)
+        reasoning = discovery_result.get("ranking_analysis", {}).get("reasoning", "")
+        questions = await generate_recruiter_test(reasoning)
+        
+        return {"questions": questions, "analysis_preview": discovery_result}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Phase 1 AI Processing failed: {str(e)}")
 
 
 class TestEvaluationRequest(BaseModel):

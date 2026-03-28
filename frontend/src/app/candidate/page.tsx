@@ -73,7 +73,7 @@ export default function CandidateDashboard() {
     formData.append("resume", resumeFile);
     
     try {
-        const res = await fetch("http://localhost:8000/api/phase1_discovery", {
+        const res = await fetch("http://127.0.0.1:8000/api/phase1_discovery", {
             method: "POST",
             body: formData,
         });
