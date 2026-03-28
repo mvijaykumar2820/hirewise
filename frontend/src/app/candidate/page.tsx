@@ -294,7 +294,7 @@ export default function CandidateDashboard() {
   const startInterview = async () => {
     setPhase("INTERVIEW");
     setInterviewStartedAt(new Date().toISOString());
-    const greeting = "Hello! I'm your AI Hiring Manager. Welcome to the live interview. Let's start — can you briefly introduce yourself and tell me about the most challenging project you've worked on?";
+    const greeting = "Let's get started. Tell me about your strongest technical skill and a real project where you used it. Be specific.";
     setMessages([{ role: "agent", text: greeting }]);
     
     // AI speaks the greeting, then auto-listen
