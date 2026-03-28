@@ -6,6 +6,8 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../../firebase";
 import { useAuth } from "../../context/AuthContext";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
 export default function CandidateDashboard() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
@@ -19,7 +21,6 @@ export default function CandidateDashboard() {
   // Submit Form State
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [githubUrl, setGithubUrl] = useState("");
-  const [linkedinUrl, setLinkedinUrl] = useState("");
 
   // Interview State
   const [recruiterQuestions, setRecruiterQuestions] = useState<string>("");
@@ -85,9 +86,10 @@ export default function CandidateDashboard() {
     const combinedPreferences = `Job Description: ${selectedJob.description}\n\nAdditional Requirements: ${selectedJob.aiPreferences || ""}`;
     formData.append("hr_preferences", combinedPreferences);
     formData.append("resume", resumeFile);
+    formData.append("github_url", githubUrl);
     
     try {
-        const res = await fetch("http://127.0.0.1:8000/api/phase1_discovery", {
+        const res = await fetch(`${API_URL}/api/phase1_discovery`, {
             method: "POST",
             body: formData,
         });
@@ -115,6 +117,7 @@ export default function CandidateDashboard() {
             name: user!.displayName || "Anonymous",
             email: user!.email || "",
             photoURL: user!.photoURL || "",
+            github_url: githubUrl,
             appliedAt: new Date().toISOString(),
             round2_status: "pending",
         });
@@ -142,7 +145,7 @@ export default function CandidateDashboard() {
     const answersArr = [testAnswers];
     
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/phase2_evaluate", {
+      const res = await fetch(`${API_URL}/api/phase2_evaluate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ questions: questionsArr, answers: answersArr })
@@ -262,7 +265,7 @@ export default function CandidateDashboard() {
 
     try {
       const currentMessages = [...messages, userMsg];
-      const res = await fetch("http://127.0.0.1:8000/api/phase3_interview", {
+      const res = await fetch(`${API_URL}/api/phase3_interview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -328,7 +331,7 @@ export default function CandidateDashboard() {
     }, { merge: true });
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/phase3_evaluate", {
+      const res = await fetch(`${API_URL}/api/phase3_evaluate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transcript, tab_switches: tabSwitches })
@@ -580,10 +583,6 @@ export default function CandidateDashboard() {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">GitHub URL</label>
                   <input type="text" value={githubUrl} onChange={e=>setGithubUrl(e.target.value)} className="w-full p-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://github.com/..." />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">LinkedIn URL</label>
-                  <input type="text" value={linkedinUrl} onChange={e=>setLinkedinUrl(e.target.value)} className="w-full p-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://linkedin.com/in/..." />
                 </div>
               </div>
 

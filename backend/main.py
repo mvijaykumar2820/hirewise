@@ -29,7 +29,8 @@ def read_root():
 @app.post("/api/phase1_discovery")
 async def run_phase1(
     hr_preferences: str = Form("Find top tech talent."),
-    resume: UploadFile = File(None)
+    resume: UploadFile = File(None),
+    github_url: str = Form("")
 ):
     try:
         resume_text = ""
@@ -45,9 +46,23 @@ async def run_phase1(
 
         candidate_data = {
             "resume_text": resume_text,
-            "github_url": "",
-            "linkedin_url": ""
+            "github_url": github_url,
         }
+        
+        # Scrape GitHub profile if URL provided
+        github_analysis = ""
+        if github_url and github_url.strip():
+            from agents.github_scraper import scrape_github_profile, format_github_for_ai
+            print(f"[BRIGHTDATA] Scraping GitHub profile: {github_url}")
+            github_data = await scrape_github_profile(github_url.strip())
+            github_analysis = format_github_for_ai(github_data)
+            candidate_data["github_data"] = github_data
+            print(f"[BRIGHTDATA] GitHub scrape complete: {len(github_data.get('repos', []))} repos found")
+        
+        # Pass GitHub data along with resume to discovery agent
+        enriched_resume = resume_text
+        if github_analysis:
+            enriched_resume += f"\n\n{github_analysis}"
         
         discovery_result = await run_discovery_agent("candidate", candidate_data, hr_preferences)
         score = discovery_result.get("ranking_analysis", {}).get("potential_score", 50)
@@ -66,7 +81,7 @@ async def run_phase1(
         from agents.interviewer import conduct_interview_turn
         from agents.recruiter import generate_recruiter_test
         
-        questions_list = await generate_recruiter_test(reasoning, resume_text)
+        questions_list = await generate_recruiter_test(reasoning, enriched_resume, github_analysis)
         print(f"[DEBUG] Recruiter generated {len(questions_list)} questions: {questions_list}")
         
         context_msg = SystemMessage(content=f"Background: Candidate passed screening. AI Analysis: {reasoning}. Job Context: {hr_preferences}\n\nCandidate Raw Resume:\n{resume_text}")

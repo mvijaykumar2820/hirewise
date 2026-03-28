@@ -15,21 +15,40 @@ def get_featherless_llm(model="meta-llama/Meta-Llama-3.1-70B-Instruct"):
 
 async def gather_non_traditional_signals(candidate_data: dict):
     """
-    Simulates mining work artifacts, online activity, and project history.
-    In a real scenario, this uses BrightData to scrape GitHub PRs, StackOverflow, Medium, etc.
+    Extracts real GitHub signals from scraped data (via Bright Data).
+    Falls back to basic resume keyword extraction if no GitHub data.
     """
-    await asyncio.sleep(1) # Simulate network call
+    github_data = candidate_data.get("github_data", {})
     
-    # Mocking rich non-traditional data fetching
-    # Instead of hallucinating, we extract key words from their actual resume if present
-    # This keeps the 'non-traditional signals' architecture intact for the demo
+    if github_data and "repos" in github_data:
+        # Real GitHub data from Bright Data scraper
+        repo_names = [r["name"] for r in github_data.get("repos", [])[:5]]
+        languages = github_data.get("top_languages", [])
+        return {
+            "work_artifacts": [
+                f"GitHub: @{github_data.get('username', 'unknown')} — {github_data.get('public_repos', 0)} public repos, {github_data.get('total_stars', 0)} total stars.",
+                f"Top Languages: {', '.join(languages) if languages else 'None detected'}",
+                f"Key Repos: {', '.join(repo_names) if repo_names else 'None'}",
+                f"Account age: since {github_data.get('created_at', 'N/A')[:4]}",
+            ],
+            "online_activity": [
+                f"Followers: {github_data.get('followers', 0)} | Following: {github_data.get('following', 0)}",
+                f"Bio: {github_data.get('bio', 'No bio')}",
+            ],
+            "project_history": [
+                f"{r['name']} [{r['language']}] ★{r['stars']} — {r['description'][:60]}"
+                for r in github_data.get("repos", [])[:5]
+            ]
+        }
+    
+    # Fallback: basic resume analysis
     resume_lower = str(candidate_data.get("resume_text", "")).lower()
     return {
         "work_artifacts": [
-            "Discovered GitHub footprint matching projects listed in resume.",
-        ] if "github" in resume_lower else ["No public code repositories found."],
+            "No GitHub URL provided — unable to verify coding activity."
+        ],
         "online_activity": [
-            "Candidate has active online presence."
+            "Limited online presence detected."
         ],
         "project_history": [
             f"Extracted {len(resume_lower.split())} words of direct project context from resume."

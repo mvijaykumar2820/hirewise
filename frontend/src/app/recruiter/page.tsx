@@ -311,141 +311,213 @@ export default function RecruiterDashboard() {
 
                   {/* CANDIDATE DETAIL DRILLDOWN */}
                   {viewingCandidate ? (
-                    <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-5">
                       <button onClick={() => setViewingCandidate(null)} className="text-gray-500 hover:text-gray-900 flex items-center text-sm font-medium transition-colors cursor-pointer">
                         <ChevronLeft size={16} className="mr-1" /> Back to Candidates
                       </button>
                       
-                      {/* Candidate Header */}
+                      {/* ===== EXECUTIVE SUMMARY BAR ===== */}
                       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                        <div className="flex items-center space-x-4">
-                          {viewingCandidate.photoURL ? (
-                            <img src={viewingCandidate.photoURL} alt="" className="w-14 h-14 rounded-full border-2 border-gray-200" />
-                          ) : (
-                            <div className="p-4 bg-gray-100 text-gray-600 rounded-full"><UserIcon size={28} /></div>
-                          )}
-                          <div>
-                            <h3 className="text-2xl font-bold text-gray-900">{viewingCandidate.name}</h3>
-                            <p className="text-gray-500">{viewingCandidate.email}</p>
-                            {viewingCandidate.appliedAt && <p className="text-xs text-gray-400 mt-1">Applied: {new Date(viewingCandidate.appliedAt).toLocaleString()}</p>}
-                          </div>
-                          <span className={`ml-auto px-4 py-1.5 text-sm font-bold uppercase rounded-full tracking-wider ${viewingCandidate.status?.includes('Completed') ? 'bg-green-100 text-green-700' : viewingCandidate.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                            {viewingCandidate.status}
-                          </span>
-                        </div>
-                        {viewingCandidate.resume_url && (
-                          <a href={viewingCandidate.resume_url} target="_blank" rel="noopener" className="mt-4 inline-flex items-center text-sm text-blue-600 hover:underline font-medium">
-                            📄 View Uploaded Resume
-                          </a>
-                        )}
-                      </div>
-
-                      {/* Round 1: Discovery */}
-                      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-lg font-bold text-gray-900">Round 1: AI Discovery Agent</h4>
-                          <span className={`px-3 py-1 text-xs font-bold rounded-full ${(viewingCandidate.round1_score || 0) >= 50 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            Score: {viewingCandidate.round1_score || 0}/100
-                          </span>
-                        </div>
-                        <div className="bg-gray-50 border rounded-lg p-4 text-sm text-gray-700 leading-relaxed">
-                          <p className="font-semibold text-gray-800 mb-1">AI Reasoning:</p>
-                          <p>{viewingCandidate.round1_reasoning || "No reasoning available."}</p>
-                        </div>
-                        <p className={`mt-3 text-sm font-semibold ${(viewingCandidate.round1_score || 0) >= 50 ? 'text-green-600' : 'text-red-600'}`}>
-                          {(viewingCandidate.round1_score || 0) >= 50 ? '✅ Passed to Round 2' : '❌ Rejected by AI'}
-                        </p>
-                      </div>
-
-                      {/* Round 2: Written Test */}
-                      {viewingCandidate.round2_status === "completed" && (
-                        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                          <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-lg font-bold text-gray-900">Round 2: Recruiter Written Test</h4>
-                            <div className="flex items-center gap-3">
-                              <span className={`px-3 py-1 text-xs font-bold rounded-full ${viewingCandidate.round2_ai_detection === 'High' ? 'bg-red-100 text-red-700' : viewingCandidate.round2_ai_detection === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
-                                AI Detection: {viewingCandidate.round2_ai_detection || "N/A"}
-                              </span>
-                              <span className={`px-3 py-1 text-xs font-bold rounded-full ${(viewingCandidate.round2_score || 0) >= 50 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                Score: {viewingCandidate.round2_score || 0}/100
-                              </span>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            {viewingCandidate.photoURL ? (
+                              <img src={viewingCandidate.photoURL} alt="" className="w-14 h-14 rounded-full border-2 border-gray-200" />
+                            ) : (
+                              <div className="p-4 bg-gray-100 text-gray-600 rounded-full"><UserIcon size={28} /></div>
+                            )}
+                            <div>
+                              <h3 className="text-2xl font-bold text-gray-900">{viewingCandidate.name}</h3>
+                              <p className="text-gray-500 text-sm">{viewingCandidate.email}</p>
+                              {viewingCandidate.appliedAt && <p className="text-xs text-gray-400 mt-0.5">Applied: {new Date(viewingCandidate.appliedAt).toLocaleString()}</p>}
                             </div>
                           </div>
-                          
-                          <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            {viewingCandidate.resume_url && (
+                              <a href={viewingCandidate.resume_url} target="_blank" rel="noopener" className="text-sm text-blue-600 hover:underline font-medium border border-blue-200 px-3 py-1.5 rounded-lg bg-blue-50">
+                                📄 Resume
+                              </a>
+                            )}
+                            {viewingCandidate.github_url && (
+                              <a href={viewingCandidate.github_url} target="_blank" rel="noopener" className="text-sm text-gray-700 hover:underline font-medium border border-gray-300 px-3 py-1.5 rounded-lg bg-gray-50">
+                                🔗 GitHub
+                              </a>
+                            )}
+                            <span className={`px-4 py-1.5 text-sm font-bold uppercase rounded-full tracking-wider ${viewingCandidate.status?.includes('Completed') ? 'bg-green-100 text-green-700' : viewingCandidate.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                              {viewingCandidate.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* ===== SCORE CARDS ROW ===== */}
+                        <div className="grid grid-cols-3 gap-4 mt-5">
+                          <div className={`rounded-xl p-4 text-center border ${(viewingCandidate.round1_score || 0) >= 50 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Round 1 • Discovery</p>
+                            <p className={`text-3xl font-bold ${(viewingCandidate.round1_score || 0) >= 50 ? 'text-green-600' : 'text-red-600'}`}>{viewingCandidate.round1_score || 0}<span className="text-sm text-gray-400">/100</span></p>
+                            <p className="text-xs text-gray-500 mt-1">{(viewingCandidate.round1_score || 0) >= 50 ? '✅ Passed' : '❌ Failed'}</p>
+                          </div>
+                          <div className={`rounded-xl p-4 text-center border ${viewingCandidate.round2_status === 'completed' ? ((viewingCandidate.round2_score || 0) >= 50 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200') : 'bg-gray-50 border-gray-200'}`}>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Round 2 • Written</p>
+                            {viewingCandidate.round2_status === 'completed' ? (
+                              <>
+                                <p className={`text-3xl font-bold ${(viewingCandidate.round2_score || 0) >= 50 ? 'text-green-600' : 'text-red-600'}`}>{viewingCandidate.round2_score || 0}<span className="text-sm text-gray-400">/100</span></p>
+                                <p className="text-xs text-gray-500 mt-1">AI Det: <span className={`font-bold ${viewingCandidate.round2_ai_detection === 'High' ? 'text-red-600' : viewingCandidate.round2_ai_detection === 'Medium' ? 'text-yellow-600' : 'text-green-600'}`}>{viewingCandidate.round2_ai_detection || 'N/A'}</span></p>
+                              </>
+                            ) : (
+                              <p className="text-2xl font-bold text-gray-400">—</p>
+                            )}
+                          </div>
+                          <div className={`rounded-xl p-4 text-center border ${viewingCandidate.round3_status === 'completed' ? ((viewingCandidate.round3_score || 0) >= 50 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200') : 'bg-gray-50 border-gray-200'}`}>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Round 3 • Interview</p>
+                            {viewingCandidate.round3_status === 'completed' ? (
+                              <>
+                                <p className={`text-3xl font-bold ${(viewingCandidate.round3_score || 0) >= 50 ? 'text-green-600' : 'text-red-600'}`}>{viewingCandidate.round3_score || 0}<span className="text-sm text-gray-400">/100</span></p>
+                                <p className="text-xs text-gray-500 mt-1">Cheat: <span className={`font-bold ${viewingCandidate.round3_cheating_risk === 'High' ? 'text-red-600' : 'text-green-600'}`}>{viewingCandidate.round3_cheating_risk || 'N/A'}</span> • AI: <span className={`font-bold ${viewingCandidate.round3_ai_detection === 'High' ? 'text-red-600' : 'text-green-600'}`}>{viewingCandidate.round3_ai_detection || 'N/A'}</span></p>
+                              </>
+                            ) : (
+                              <p className="text-2xl font-bold text-gray-400">—</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Overall Average */}
+                        {viewingCandidate.round3_status === 'completed' && (() => {
+                          const avg = Math.round(((viewingCandidate.round1_score || 0) + (viewingCandidate.round2_score || 0) + (viewingCandidate.round3_score || 0)) / 3);
+                          return (
+                            <div className={`mt-4 rounded-xl p-4 border flex items-center justify-between ${avg >= 60 ? 'bg-green-50 border-green-300' : avg >= 40 ? 'bg-yellow-50 border-yellow-300' : 'bg-red-50 border-red-300'}`}>
+                              <div>
+                                <p className="text-sm font-bold text-gray-700">Overall Assessment</p>
+                                <p className="text-xs text-gray-500">Average across all 3 rounds</p>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <span className={`text-3xl font-bold ${avg >= 60 ? 'text-green-600' : avg >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>{avg}%</span>
+                                <span className={`px-3 py-1 text-sm font-bold rounded-full ${avg >= 60 ? 'bg-green-200 text-green-800' : avg >= 40 ? 'bg-yellow-200 text-yellow-800' : 'bg-red-200 text-red-800'}`}>
+                                  {avg >= 70 ? '🟢 Strong Hire' : avg >= 55 ? '🟡 Consider' : '🔴 No Hire'}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* ===== GITHUB PROFILE SECTION ===== */}
+                      {viewingCandidate.discovery_analysis?.signals_gathered && (
+                        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                          <h4 className="text-md font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            <span>🔍</span> GitHub & Online Signals
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div className="bg-gray-50 border rounded-lg p-3">
+                              <p className="text-xs font-semibold text-gray-500 uppercase mb-1.5">Work Artifacts</p>
+                              {viewingCandidate.discovery_analysis.signals_gathered.work_artifacts?.map((s: string, i: number) => (
+                                <p key={i} className="text-xs text-gray-700 mb-0.5">• {s}</p>
+                              ))}
+                            </div>
+                            <div className="bg-gray-50 border rounded-lg p-3">
+                              <p className="text-xs font-semibold text-gray-500 uppercase mb-1.5">Online Activity</p>
+                              {viewingCandidate.discovery_analysis.signals_gathered.online_activity?.map((s: string, i: number) => (
+                                <p key={i} className="text-xs text-gray-700 mb-0.5">• {s}</p>
+                              ))}
+                            </div>
+                            <div className="bg-gray-50 border rounded-lg p-3">
+                              <p className="text-xs font-semibold text-gray-500 uppercase mb-1.5">Top Projects</p>
+                              {viewingCandidate.discovery_analysis.signals_gathered.project_history?.map((s: string, i: number) => (
+                                <p key={i} className="text-xs text-gray-700 mb-0.5">• {s}</p>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ===== ROUND 1 DETAIL ===== */}
+                      <details className="bg-white border border-gray-200 rounded-xl shadow-sm group" open>
+                        <summary className="p-5 cursor-pointer flex items-center justify-between list-none">
+                          <div className="flex items-center gap-3">
+                            <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${(viewingCandidate.round1_score || 0) >= 50 ? 'bg-green-500' : 'bg-red-500'}`}>1</span>
+                            <h4 className="text-md font-bold text-gray-900">Round 1: AI Discovery Agent</h4>
+                          </div>
+                          <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                        </summary>
+                        <div className="px-5 pb-5 border-t border-gray-100 pt-4">
+                          <div className="bg-gray-50 border rounded-lg p-4 text-sm text-gray-700 leading-relaxed">
+                            <p className="font-semibold text-gray-800 mb-1">AI Reasoning:</p>
+                            <p>{viewingCandidate.round1_reasoning || "No reasoning available."}</p>
+                          </div>
+                        </div>
+                      </details>
+
+                      {/* ===== ROUND 2 DETAIL ===== */}
+                      {viewingCandidate.round2_status === "completed" && (
+                        <details className="bg-white border border-gray-200 rounded-xl shadow-sm group">
+                          <summary className="p-5 cursor-pointer flex items-center justify-between list-none">
+                            <div className="flex items-center gap-3">
+                              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${(viewingCandidate.round2_score || 0) >= 50 ? 'bg-green-500' : 'bg-red-500'}`}>2</span>
+                              <h4 className="text-md font-bold text-gray-900">Round 2: Written Test</h4>
+                              <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${viewingCandidate.round2_ai_detection === 'High' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>AI Det: {viewingCandidate.round2_ai_detection || 'N/A'}</span>
+                            </div>
+                            <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                          </summary>
+                          <div className="px-5 pb-5 border-t border-gray-100 pt-4 space-y-3">
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                              <p className="font-semibold text-blue-800 text-sm mb-2">📝 AI-Generated Questions:</p>
+                              <p className="font-semibold text-blue-800 text-sm mb-2">📝 Questions:</p>
                               <p className="text-sm text-gray-700 whitespace-pre-wrap">{viewingCandidate.round2_questions}</p>
                             </div>
                             <div className="bg-gray-50 border rounded-lg p-4">
-                              <p className="font-semibold text-gray-800 text-sm mb-2">✍️ Candidate's Answers:</p>
+                              <p className="font-semibold text-gray-800 text-sm mb-2">✍️ Answers:</p>
                               <p className="text-sm text-gray-700 whitespace-pre-wrap">{viewingCandidate.round2_answers}</p>
                             </div>
                             <div className="bg-gray-50 border rounded-lg p-4">
-                              <p className="font-semibold text-gray-800 text-sm mb-2">🤖 AI Evaluation Report:</p>
+                              <p className="font-semibold text-gray-800 text-sm mb-2">🤖 Evaluation:</p>
                               <p className="text-sm text-gray-700 whitespace-pre-wrap">{viewingCandidate.round2_report}</p>
                             </div>
                           </div>
-                        </div>
+                        </details>
                       )}
                       {viewingCandidate.round2_status === "pending" && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
-                          <p className="text-yellow-700 font-medium">⏳ Round 2 Written Test is pending — candidate has not submitted answers yet.</p>
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-5 text-center">
+                          <p className="text-yellow-700 font-medium text-sm">⏳ Round 2 pending — candidate has not submitted answers yet.</p>
                         </div>
                       )}
 
-                      {/* Round 3: Live Interview */}
+                      {/* ===== ROUND 3 DETAIL ===== */}
                       {viewingCandidate.round3_status === "completed" && (
-                        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                          <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-lg font-bold text-gray-900">Round 3: Live AI Video Interview</h4>
+                        <details className="bg-white border border-gray-200 rounded-xl shadow-sm group">
+                          <summary className="p-5 cursor-pointer flex items-center justify-between list-none">
                             <div className="flex items-center gap-3">
-                              <span className={`px-3 py-1 text-xs font-bold rounded-full ${viewingCandidate.round3_cheating_risk === 'High' ? 'bg-red-100 text-red-700' : viewingCandidate.round3_cheating_risk === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
-                                Cheating: {viewingCandidate.round3_cheating_risk || "N/A"}
-                              </span>
-                              <span className={`px-3 py-1 text-xs font-bold rounded-full ${viewingCandidate.round3_ai_detection === 'High' ? 'bg-red-100 text-red-700' : viewingCandidate.round3_ai_detection === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
-                                AI Detection: {viewingCandidate.round3_ai_detection || "N/A"}
-                              </span>
-                              <span className={`px-3 py-1 text-xs font-bold rounded-full ${(viewingCandidate.round3_score || 0) >= 50 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                Score: {viewingCandidate.round3_score || 0}/100
-                              </span>
+                              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${(viewingCandidate.round3_score || 0) >= 50 ? 'bg-green-500' : 'bg-red-500'}`}>3</span>
+                              <h4 className="text-md font-bold text-gray-900">Round 3: Live AI Interview</h4>
+                              <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${viewingCandidate.round3_cheating_risk === 'High' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>Cheat: {viewingCandidate.round3_cheating_risk || 'N/A'}</span>
+                              <span className="text-xs text-gray-500">⚠ {viewingCandidate.round3_tab_switches || 0} tab switches</span>
                             </div>
-                          </div>
-                          
-                          {/* Meta Info */}
-                          <div className="flex gap-4 mb-4 text-xs text-gray-500">
-                            <span>🕐 Started: {viewingCandidate.round3_started_at ? new Date(viewingCandidate.round3_started_at).toLocaleString() : "N/A"}</span>
-                            <span>🏁 Ended: {viewingCandidate.round3_ended_at ? new Date(viewingCandidate.round3_ended_at).toLocaleString() : "N/A"}</span>
-                            <span className={`font-bold ${(viewingCandidate.round3_tab_switches || 0) > 2 ? 'text-red-600' : 'text-green-600'}`}>
-                              ⚠ Tab Switches: {viewingCandidate.round3_tab_switches || 0}
-                            </span>
-                          </div>
-
-                          {/* Transcript */}
-                          <div className="bg-gray-50 border rounded-lg p-4 space-y-3 max-h-[400px] overflow-y-auto">
-                            <p className="font-semibold text-gray-800 text-sm mb-2">💬 Full Interview Transcript:</p>
-                            {viewingCandidate.round3_transcript?.map((msg: any, i: number) => (
-                              <div key={i} className={`flex ${msg.role === 'ai' ? 'justify-start' : 'justify-end'}`}>
-                                <div className={`${msg.role === 'ai' ? 'bg-white border-gray-200 text-gray-800' : 'bg-blue-50 border-blue-200 text-gray-800'} border p-3 rounded-lg max-w-[80%] text-sm`}>
-                                  <p className="font-semibold text-xs mb-1 text-gray-500">{msg.role === 'ai' ? '🤖 AI Interviewer' : '👤 Candidate'}</p>
-                                  {msg.text}
+                            <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                          </summary>
+                          <div className="px-5 pb-5 border-t border-gray-100 pt-4 space-y-3">
+                            <div className="flex gap-4 text-xs text-gray-500">
+                              <span>🕐 Started: {viewingCandidate.round3_started_at ? new Date(viewingCandidate.round3_started_at).toLocaleString() : "N/A"}</span>
+                              <span>🏁 Ended: {viewingCandidate.round3_ended_at ? new Date(viewingCandidate.round3_ended_at).toLocaleString() : "N/A"}</span>
+                            </div>
+                            <div className="bg-gray-50 border rounded-lg p-4 space-y-3 max-h-[350px] overflow-y-auto">
+                              <p className="font-semibold text-gray-800 text-sm mb-2">💬 Transcript:</p>
+                              {viewingCandidate.round3_transcript?.map((msg: any, i: number) => (
+                                <div key={i} className={`flex ${msg.role === 'ai' ? 'justify-start' : 'justify-end'}`}>
+                                  <div className={`${msg.role === 'ai' ? 'bg-white border-gray-200 text-gray-800' : 'bg-blue-50 border-blue-200 text-gray-800'} border p-3 rounded-lg max-w-[80%] text-sm`}>
+                                    <p className="font-semibold text-xs mb-1 text-gray-500">{msg.role === 'ai' ? '🤖 AI' : '👤 Candidate'}</p>
+                                    {msg.text}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Report */}
-                          {viewingCandidate.round3_report && (
-                            <div className="bg-gray-50 border rounded-lg p-4 mt-4">
-                              <p className="font-semibold text-gray-800 text-sm mb-2">📋 AI Evaluation Report:</p>
-                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{viewingCandidate.round3_report}</p>
+                              ))}
                             </div>
-                          )}
-                        </div>
+                            {viewingCandidate.round3_report && (
+                              <div className="bg-gray-50 border rounded-lg p-4">
+                                <p className="font-semibold text-gray-800 text-sm mb-2">📋 Evaluation:</p>
+                                <p className="text-sm text-gray-700 whitespace-pre-wrap">{viewingCandidate.round3_report}</p>
+                              </div>
+                            )}
+                          </div>
+                        </details>
                       )}
                       {viewingCandidate.round2_status === "completed" && !viewingCandidate.round3_status && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
-                          <p className="text-yellow-700 font-medium">⏳ Round 3 Live Interview is pending — candidate has not started the interview yet.</p>
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-5 text-center">
+                          <p className="text-yellow-700 font-medium text-sm">⏳ Round 3 pending — candidate has not started the interview yet.</p>
                         </div>
                       )}
                     </div>
