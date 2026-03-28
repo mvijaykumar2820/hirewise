@@ -56,8 +56,9 @@ async def run_phase1(
         if score < 50:
             return {
                 "status": "rejected", 
+                "score": score,
                 "analysis_preview": discovery_result,
-                "first_message": "Thank you for sharing your resume. Unfortunately, based on the job requirements, we won't be moving forward with your application at this time."
+                "first_message": f"Thank you for applying. After careful analysis, our AI Screening Agent has determined that your profile does not meet the requirements for this role (Score: {score}/100). Reason: {reasoning}"
             }
 
         # If passed, generate dynamic targeted opening question using the Phase 3 Interview Agent!
@@ -66,6 +67,7 @@ async def run_phase1(
         from agents.recruiter import generate_recruiter_test
         
         questions_list = await generate_recruiter_test(reasoning, resume_text)
+        print(f"[DEBUG] Recruiter generated {len(questions_list)} questions: {questions_list}")
         
         context_msg = SystemMessage(content=f"Background: Candidate passed screening. AI Analysis: {reasoning}. Job Context: {hr_preferences}\n\nCandidate Raw Resume:\n{resume_text}")
         dynamic_opening = await conduct_interview_turn(

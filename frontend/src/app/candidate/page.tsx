@@ -10,7 +10,7 @@ export default function CandidateDashboard() {
   const [selectedJob, setSelectedJob] = useState<any>(null);
 
   // Application State
-  const [phase, setPhase] = useState<"IDLE" | "SUBMIT" | "EVALUATING" | "RECRUITER_TEST" | "INTERVIEW">("IDLE");
+  const [phase, setPhase] = useState<"IDLE" | "SUBMIT" | "EVALUATING" | "REJECTED" | "RECRUITER_TEST" | "INTERVIEW">("IDLE");
   const [isUploading, setIsUploading] = useState(false);
   
   // Submit Form State
@@ -21,6 +21,7 @@ export default function CandidateDashboard() {
   // Interview State
   const [recruiterQuestions, setRecruiterQuestions] = useState<string>("");
   const [testAnswers, setTestAnswers] = useState<string>("");
+  const [rejectionMessage, setRejectionMessage] = useState<string>("");
   const [messages, setMessages] = useState<{role: string, text: string}[]>([]);
   const [input, setInput] = useState("");
 
@@ -90,6 +91,13 @@ export default function CandidateDashboard() {
         
         const data = await res.json();
         console.log("Phase 1 AI Analysis Complete:", data);
+        
+        if (data.status === "rejected") {
+            setIsUploading(false);
+            setRejectionMessage(data.first_message);
+            setPhase("REJECTED");
+            return;
+        }
         
         // Ensure storage either resolved or timed out by now
         const resume_url = await storageLinkPromise;
@@ -223,6 +231,27 @@ export default function CandidateDashboard() {
                   <h2 className="text-2xl font-bold mb-3 text-gray-900">Round 1: AI Evaluation</h2>
                   <p className="text-gray-500 max-w-md mx-auto leading-relaxed">Please wait while our Deep Discovery Agent analyzes your non-traditional signals, project history, and experience...</p>
                 </div>
+              </div>
+            )}
+
+            {phase === "REJECTED" && (
+              <div className="flex-1 flex flex-col items-center justify-center text-gray-800 space-y-6 animate-in fade-in zoom-in duration-500">
+                <div className="relative w-24 h-24 mb-4">
+                  <div className="absolute inset-0 border-4 border-red-100 rounded-full"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </div>
+                </div>
+                <div className="text-center max-w-lg">
+                  <h2 className="text-2xl font-bold mb-3 text-red-600">Application Not Accepted</h2>
+                  <p className="text-gray-600 leading-relaxed text-sm">{rejectionMessage}</p>
+                </div>
+                <button 
+                  onClick={() => setPhase("IDLE")}
+                  className="mt-4 px-6 py-3 bg-gray-800 hover:bg-gray-900 text-white rounded-lg font-medium transition-all"
+                >
+                  ← Try Another Job
+                </button>
               </div>
             )}
 
