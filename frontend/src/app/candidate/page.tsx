@@ -114,15 +114,35 @@ export default function CandidateDashboard() {
     }
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input) return;
-    setMessages(prev => [...prev, { role: "user", text: input }]);
+    const userMessage = { role: "user", text: input };
+    setMessages(prev => [...prev, userMessage]);
     setInput("");
     
-    // Simulate AI thinking and DDA pivot
-    setTimeout(() => {
-      setMessages(prev => [...prev, { role: "agent", text: "That's a solid approach. However, if that service was handling 10,000 requests per second and downtime was unacceptable, how would your strategy change? (Testing ceiling)" }]);
-    }, 1500);
+    const payload = {
+        chat_history: messages.map(m => ({
+            type: m.role === "user" ? "human" : "ai",
+            content: m.text
+        })),
+        latest_message: input
+    };
+
+    try {
+        const res = await fetch("http://127.0.0.1:8000/api/phase3_interview", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!res.ok) throw new Error("Backend AI error");
+        
+        const data = await res.json();
+        setMessages(prev => [...prev, { role: "agent", text: data.response }]);
+    } catch (e) {
+        console.error("Interview error:", e);
+        setMessages(prev => [...prev, { role: "agent", text: "Network Error: Could you repeat your last point?" }]);
+    }
   };
 
   return (
