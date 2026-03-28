@@ -1,11 +1,14 @@
 "use client";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { collection, onSnapshot, query, setDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../../firebase";
+import { useAuth } from "../../context/AuthContext";
 
 export default function CandidateDashboard() {
+  const { user, loading, logout } = useAuth();
+  const router = useRouter();
   const [jobs, setJobs] = useState<any[]>([]);
   const [selectedJob, setSelectedJob] = useState<any>(null);
 
@@ -161,6 +164,9 @@ export default function CandidateDashboard() {
     }
   };
 
+  if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
+  if (!user) { router.push("/"); return null; }
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 p-8">
       <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-8">
@@ -168,11 +174,14 @@ export default function CandidateDashboard() {
         {/* Left Pane: Interaction Area */}
         <div className="flex-[2] space-y-6">
           <header className="flex items-center justify-between border-b border-gray-200 pb-4">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-gray-900">Candidate Portal</h1>
-              <p className="text-gray-500 mt-1">Apply and Interview via AI</p>
+            <div className="flex items-center gap-3">
+              {user.photoURL && <img src={user.photoURL} alt="" className="w-9 h-9 rounded-full border border-gray-200" />}
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900">Candidate Portal</h1>
+                <p className="text-gray-500 mt-0.5 text-sm">{user.displayName || user.email}</p>
+              </div>
             </div>
-            <Link href="/" className="text-sm font-medium text-gray-500 hover:text-gray-800">Logout</Link>
+            <button onClick={async () => { await logout(); router.push("/"); }} className="text-sm font-medium text-gray-500 hover:text-red-600 transition-colors">Logout</button>
           </header>
 
           <main className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 min-h-[600px] flex flex-col">

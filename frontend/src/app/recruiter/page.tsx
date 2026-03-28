@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LayoutDashboard, Briefcase, Home as HomeIcon, LogOut, Plus, Users, CheckCircle, Clock, ChevronLeft, User as UserIcon } from "lucide-react";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "../../firebase";
+import { useAuth } from "../../context/AuthContext";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
@@ -29,6 +30,8 @@ const AbstractShapes = () => {
 };
 
 export default function RecruiterDashboard() {
+  const { user, loading: authLoading, logout } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("home");
   const [jobs, setJobs] = useState<any[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -93,13 +96,15 @@ export default function RecruiterDashboard() {
     }]
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex bg-white items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
+
+  if (!user) { router.push("/"); return null; }
 
   return (
     <div className="flex h-screen bg-white text-gray-900 font-sans overflow-hidden">
@@ -123,10 +128,19 @@ export default function RecruiterDashboard() {
             </button>
           </nav>
         </div>
-        <div className="p-4 border-t border-gray-200">
-          <Link href="/" className="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium w-full">
+        <div className="p-4 border-t border-gray-200 space-y-3">
+          {user.photoURL && (
+            <div className="flex items-center gap-3 px-4 py-2">
+              <img src={user.photoURL} alt="" className="w-8 h-8 rounded-full border border-gray-200" />
+              <div className="text-sm">
+                <p className="font-medium text-gray-800 truncate">{user.displayName}</p>
+                <p className="text-xs text-gray-400 truncate">{user.email}</p>
+              </div>
+            </div>
+          )}
+          <button onClick={async () => { await logout(); router.push("/"); }} className="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors font-medium w-full">
             <LogOut size={20} /> <span>Sign Out</span>
-          </Link>
+          </button>
         </div>
       </aside>
 
