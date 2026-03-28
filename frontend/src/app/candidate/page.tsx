@@ -44,21 +44,30 @@ export default function CandidateDashboard() {
         return;
     }
     
+    console.log("Triggered Evaluation Flow. Locking UI...");
     setIsUploading(true);
     setPhase("EVALUATING");
 
-    // 1. Upload Resume to Firebase Storage
-    let resume_url = "";
-    try {
-        const fileRef = ref(storage, `resumes/${selectedJob.id}/demo-cand-123.pdf`);
-        await uploadBytes(fileRef, resumeFile);
-        resume_url = await getDownloadURL(fileRef);
-        console.log("Resume securely uploaded to Firebase!");
-    } catch (err) {
-        console.warn("Storage upload skipped or failed:", err);
-    }
-  
-    // 2. Send to Backend AI
+    // 1. Upload Resume to Firebase Storage (with a 10s Timeout limit)
+    const fileRef = ref(storage, `resumes/${selectedJob.id}/demo-cand-123.pdf`);
+    
+    const uploadPromise = uploadBytes(fileRef, resumeFile)
+        .then(() => getDownloadURL(fileRef))
+        .catch(err => {
+            console.warn("Storage upload explicitly failed:", err);
+            return "";
+        });
+    
+    const timeoutPromise = new Promise(resolve => setTimeout(() => {
+        console.warn("Firebase Storage timeout (ignored). Proceeding anyway...");
+        resolve("");
+    }, 10000));
+    
+    // We launch the upload, but limit its holding time to 10 seconds!
+    const storageLinkPromise = Promise.race([uploadPromise, timeoutPromise]);
+
+    // 2. Automatically trigger AI processing in parallel!
+    console.log("Sending PDF to stateless AI Backend (FastAPI)...");
     const formData = new FormData();
     formData.append("hr_preferences", selectedJob.aiPreferences || "Find top tech talent.");
     formData.append("resume", resumeFile);
@@ -68,8 +77,20 @@ export default function CandidateDashboard() {
             method: "POST",
             body: formData,
         });
+        
+        console.log("AI API Responded with status:", res.status);
+        if (!res.ok) {
+            const errText = await res.text();
+            console.error("AI API Raw Error:", errText);
+            throw new Error(`API HTTP ${res.status}: ${errText}`);
+        }
+        
         const data = await res.json();
         console.log("Phase 1 AI Analysis Complete:", data);
+        
+        // Ensure storage either resolved or timed out by now
+        const resume_url = await storageLinkPromise;
+        console.log("Resolved Storage URL for DB:", resume_url);
         
         // 3. Front-end handles database update directly with Resume Link
         await setDoc(doc(db, "jobs", selectedJob.id, "candidates", "demo-cand-123"), {
@@ -87,7 +108,7 @@ export default function CandidateDashboard() {
         ]);
     } catch (e) {
         console.error("Critical failure during analysis", e);
-        alert("Failed to analyze resume. Check backend logs.");
+        alert("Failed to analyze resume. Ensure your APIs and Backend are running cleanly.");
         setIsUploading(false);
         setPhase("SUBMIT");
     }
