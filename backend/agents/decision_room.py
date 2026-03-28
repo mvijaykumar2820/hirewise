@@ -16,7 +16,7 @@ async def run_decision_room(candidate_data: dict, interview_transcript: str):
     Simulates how real hiring decisions are made across multiple stakeholders.
     Reflects tradeoffs, disagreements, and executive synthesis.
     """
-    llm = get_featherless_llm("meta-llama/Meta-Llama-3.1-405B-Instruct") 
+    llm = get_featherless_llm("meta-llama/Meta-Llama-3.1-70B-Instruct") 
     
     # 3 distinct roles for the Decision Simulator
     recruiter_prompt = "You are Agent A (The Recruiter). You are desperate to fill the role quickly, but you care about culture fit. You will rigorously defend the candidate if they show non-traditional hustle, but you hate when candidates sound robotic or AI-generated. Read the data and argue your case."
