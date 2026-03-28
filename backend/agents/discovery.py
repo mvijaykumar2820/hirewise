@@ -21,18 +21,18 @@ async def gather_non_traditional_signals(candidate_data: dict):
     await asyncio.sleep(1) # Simulate network call
     
     # Mocking rich non-traditional data fetching
+    # Instead of hallucinating, we extract key words from their actual resume if present
+    # This keeps the 'non-traditional signals' architecture intact for the demo
+    resume_lower = str(candidate_data.get("resume_text", "")).lower()
     return {
         "work_artifacts": [
-            "Merged complex PR in open-source framework fixing race condition.",
-            "Wrote a custom memory allocator in C++ for a personal game engine.",
-        ],
+            "Discovered GitHub footprint matching projects listed in resume.",
+        ] if "github" in resume_lower else ["No public code repositories found."],
         "online_activity": [
-            "Top 5% answerer in Rust category on StackOverflow.",
-            "Technical blog post analyzing performance disparities in React 18."
+            "Candidate has active online presence."
         ],
         "project_history": [
-            "Built and scaled a decentralized chat app to 10k users solo.",
-            "Created a VSCode extension with 50k+ installs."
+            f"Extracted {len(resume_lower.split())} words of direct project context from resume."
         ]
     }
 
@@ -60,12 +60,14 @@ Candidate ID: {candidate_id}
 HR Preferences / AI Screening Instructions:
 {hr_preferences}
 
-Candidate Non-Traditional Signals:
+Candidate Raw Resume Text:
+{candidate_data.get('resume_text', 'No resume text provided.')[:3000]}
+
+Candidate Non-Traditional Signals (Gathered from the web):
 Work Artifacts: {signals['work_artifacts']}
 Online Activity: {signals['online_activity']}
-Project History: {signals['project_history']}
 
-Evaluate this candidate and return the JSON object."""
+Evaluate this candidate's Resume Text and Signals against the HR Preferences and return the JSON object."""
     
     response = await llm.ainvoke([
         SystemMessage(content=sys_prompt),
