@@ -106,13 +106,18 @@ export default function CandidateDashboard() {
         const resume_url = await storageLinkPromise;
         console.log("Resolved Storage URL for DB:", resume_url);
         
-        // 3. Front-end handles database update directly with Resume Link
-        await setDoc(doc(db, "jobs", selectedJob.id, "candidates", "demo-cand-123"), {
-            status: data.status === "rejected" ? "Rejected" : "Screening",
+        await setDoc(doc(db, "jobs", selectedJob.id, "candidates", user!.uid), {
+            status: "Round 1 Passed",
+            round1_score: data.analysis_preview?.ranking_analysis?.potential_score || 0,
+            round1_reasoning: data.analysis_preview?.ranking_analysis?.reasoning || "",
             discovery_analysis: data.analysis_preview,
             recruiter_questions: data.recruiter_questions || "",
             resume_url: resume_url,
-            name: "Candidate"
+            name: user!.displayName || "Anonymous",
+            email: user!.email || "",
+            photoURL: user!.photoURL || "",
+            appliedAt: new Date().toISOString(),
+            round2_status: "pending",
         });
         
         setIsUploading(false);
@@ -126,6 +131,47 @@ export default function CandidateDashboard() {
         alert("Failed to analyze resume. Ensure your APIs and Backend are running cleanly.");
         setIsUploading(false);
         setPhase("SUBMIT");
+    }
+  };
+
+  const handleSubmitTest = async () => {
+    if (!testAnswers.trim()) { alert("Please write your answers first!"); return; }
+    
+    const questionsArr = recruiterQuestions.split("\n\n").filter(Boolean);
+    const answersArr = [testAnswers];
+    
+    try {
+      // Call backend to evaluate
+      const res = await fetch("http://127.0.0.1:8000/api/phase2_evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questions: questionsArr, answers: answersArr })
+      });
+      const data = await res.json();
+      const report = data.report || "";
+      
+      // Parse score from report
+      const scoreMatch = report.match(/Score:\s*(\d+)/i);
+      const aiDetectionMatch = report.match(/AI_Detection:\s*(\w+)/i);
+      const round2Score = scoreMatch ? parseInt(scoreMatch[1]) : 50;
+      const aiDetection = aiDetectionMatch ? aiDetectionMatch[1] : "Unknown";
+      
+      // Save to Firestore
+      await setDoc(doc(db, "jobs", selectedJob.id, "candidates", user!.uid), {
+        round2_status: "completed",
+        round2_questions: recruiterQuestions,
+        round2_answers: testAnswers,
+        round2_score: round2Score,
+        round2_ai_detection: aiDetection,
+        round2_report: report,
+        status: "Round 2 Completed",
+      }, { merge: true });
+      
+      setPhase("INTERVIEW");
+    } catch (e: any) {
+      console.error("Round 2 evaluation failed:", e);
+      // Still proceed to interview but mark as unevaluated
+      setPhase("INTERVIEW");
     }
   };
 
@@ -278,7 +324,7 @@ export default function CandidateDashboard() {
                    onChange={e => setTestAnswers(e.target.value)}
                  />
                  <button 
-                   onClick={() => setPhase("INTERVIEW")}
+                   onClick={handleSubmitTest}
                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium shadow-sm transition-all w-full"
                  >
                    Submit Answers & Proceed to Live Interview

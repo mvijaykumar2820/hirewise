@@ -43,6 +43,8 @@ export default function RecruiterDashboard() {
 
   // Applications Tab View State
   const [viewingCandidatesFor, setViewingCandidatesFor] = useState<string | null>(null);
+  const [viewingCandidate, setViewingCandidate] = useState<any>(null);
+  const [candidates, setCandidates] = useState<any[]>([]);
 
   // Firestore Real-Time Listener
   useEffect(() => {
@@ -59,6 +61,16 @@ export default function RecruiterDashboard() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Listen to candidates subcollection when viewing a specific job
+  useEffect(() => {
+    if (!viewingCandidatesFor) { setCandidates([]); return; }
+    const unsub = onSnapshot(collection(db, "jobs", viewingCandidatesFor, "candidates"), (snap) => {
+      const liveCandidates = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+      setCandidates(liveCandidates);
+    });
+    return () => unsub();
+  }, [viewingCandidatesFor]);
 
   const handleCreateJob = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -273,7 +285,7 @@ export default function RecruiterDashboard() {
                 <div className="animate-in slide-in-from-right-8 duration-300">
                   <header className="border-b border-gray-200 pb-4 mb-6">
                     <button 
-                      onClick={() => setViewingCandidatesFor(null)}
+                      onClick={() => { setViewingCandidatesFor(null); setViewingCandidate(null); }}
                       className="text-gray-500 hover:text-gray-900 mb-4 flex items-center text-sm font-medium transition-colors cursor-pointer"
                     >
                       <ChevronLeft size={16} className="mr-1" /> Back to Jobs
@@ -282,35 +294,130 @@ export default function RecruiterDashboard() {
                     <p className="text-gray-500 mt-1">Review live AI Orchestrator findings from Firebase.</p>
                   </header>
 
-                  <div className="space-y-4">
-                    {viewingJob.candidates && viewingJob.candidates.length > 0 ? viewingJob.candidates.map((candidate: any) => (
-                      <div key={candidate.id} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex items-start justify-between">
-                        <div className="flex items-start space-x-4">
-                          <div className="p-3 bg-gray-100 text-gray-600 rounded-full">
-                            <UserIcon size={24} />
-                          </div>
+                  {/* CANDIDATE DETAIL DRILLDOWN */}
+                  {viewingCandidate ? (
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                      <button onClick={() => setViewingCandidate(null)} className="text-gray-500 hover:text-gray-900 flex items-center text-sm font-medium transition-colors cursor-pointer">
+                        <ChevronLeft size={16} className="mr-1" /> Back to Candidates
+                      </button>
+                      
+                      {/* Candidate Header */}
+                      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                        <div className="flex items-center space-x-4">
+                          {viewingCandidate.photoURL ? (
+                            <img src={viewingCandidate.photoURL} alt="" className="w-14 h-14 rounded-full border-2 border-gray-200" />
+                          ) : (
+                            <div className="p-4 bg-gray-100 text-gray-600 rounded-full"><UserIcon size={28} /></div>
+                          )}
                           <div>
-                            <h3 className="text-lg font-bold text-gray-900">{candidate.name}</h3>
-                            <p className="text-sm text-gray-500 mt-1">Orchestrator Highlight: <span className="text-gray-700 italic">"{candidate.highlight}"</span></p>
+                            <h3 className="text-2xl font-bold text-gray-900">{viewingCandidate.name}</h3>
+                            <p className="text-gray-500">{viewingCandidate.email}</p>
+                            {viewingCandidate.appliedAt && <p className="text-xs text-gray-400 mt-1">Applied: {new Date(viewingCandidate.appliedAt).toLocaleString()}</p>}
+                          </div>
+                          <span className={`ml-auto px-4 py-1.5 text-sm font-bold uppercase rounded-full tracking-wider ${viewingCandidate.status?.includes('Completed') ? 'bg-green-100 text-green-700' : viewingCandidate.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                            {viewingCandidate.status}
+                          </span>
+                        </div>
+                        {viewingCandidate.resume_url && (
+                          <a href={viewingCandidate.resume_url} target="_blank" rel="noopener" className="mt-4 inline-flex items-center text-sm text-blue-600 hover:underline font-medium">
+                            📄 View Uploaded Resume
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Round 1: Discovery */}
+                      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-lg font-bold text-gray-900">Round 1: AI Discovery Agent</h4>
+                          <span className={`px-3 py-1 text-xs font-bold rounded-full ${(viewingCandidate.round1_score || 0) >= 50 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            Score: {viewingCandidate.round1_score || 0}/100
+                          </span>
+                        </div>
+                        <div className="bg-gray-50 border rounded-lg p-4 text-sm text-gray-700 leading-relaxed">
+                          <p className="font-semibold text-gray-800 mb-1">AI Reasoning:</p>
+                          <p>{viewingCandidate.round1_reasoning || "No reasoning available."}</p>
+                        </div>
+                        <p className={`mt-3 text-sm font-semibold ${(viewingCandidate.round1_score || 0) >= 50 ? 'text-green-600' : 'text-red-600'}`}>
+                          {(viewingCandidate.round1_score || 0) >= 50 ? '✅ Passed to Round 2' : '❌ Rejected by AI'}
+                        </p>
+                      </div>
+
+                      {/* Round 2: Written Test */}
+                      {viewingCandidate.round2_status === "completed" && (
+                        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-lg font-bold text-gray-900">Round 2: Recruiter Written Test</h4>
+                            <div className="flex items-center gap-3">
+                              <span className={`px-3 py-1 text-xs font-bold rounded-full ${viewingCandidate.round2_ai_detection === 'High' ? 'bg-red-100 text-red-700' : viewingCandidate.round2_ai_detection === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                                AI Detection: {viewingCandidate.round2_ai_detection || "N/A"}
+                              </span>
+                              <span className={`px-3 py-1 text-xs font-bold rounded-full ${(viewingCandidate.round2_score || 0) >= 50 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                Score: {viewingCandidate.round2_score || 0}/100
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-4">
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                              <p className="font-semibold text-blue-800 text-sm mb-2">📝 AI-Generated Questions:</p>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{viewingCandidate.round2_questions}</p>
+                            </div>
+                            <div className="bg-gray-50 border rounded-lg p-4">
+                              <p className="font-semibold text-gray-800 text-sm mb-2">✍️ Candidate's Answers:</p>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{viewingCandidate.round2_answers}</p>
+                            </div>
+                            <div className="bg-gray-50 border rounded-lg p-4">
+                              <p className="font-semibold text-gray-800 text-sm mb-2">🤖 AI Evaluation Report:</p>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{viewingCandidate.round2_report}</p>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex flex-col items-end">
-                          <span className={`px-3 py-1 text-xs font-bold uppercase rounded-full tracking-wider mb-2 ${
-                            candidate.status === 'Passed' ? 'bg-green-100 text-green-700' :
-                            candidate.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-                            'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {candidate.status}
-                          </span>
-                          <span className="font-semibold text-gray-800">Match Score: {candidate.score}%</span>
+                      )}
+                      {viewingCandidate.round2_status === "pending" && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
+                          <p className="text-yellow-700 font-medium">⏳ Round 2 Written Test is pending — candidate has not submitted answers yet.</p>
                         </div>
-                      </div>
-                    )) : (
-                      <div className="p-12 text-center border-2 border-dashed border-gray-200 rounded-xl text-gray-500">
-                        No real candidates have applied to this role in Firebase yet.
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* CANDIDATE LIST */
+                    <div className="space-y-4">
+                      {candidates.length > 0 ? candidates.map((candidate: any) => (
+                        <div key={candidate.id} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex items-start justify-between">
+                          <div className="flex items-start space-x-4">
+                            {candidate.photoURL ? (
+                              <img src={candidate.photoURL} alt="" className="w-11 h-11 rounded-full border border-gray-200" />
+                            ) : (
+                              <div className="p-3 bg-gray-100 text-gray-600 rounded-full"><UserIcon size={24} /></div>
+                            )}
+                            <div>
+                              <h3 className="text-lg font-bold text-gray-900">{candidate.name}</h3>
+                              <p className="text-sm text-gray-500">{candidate.email}</p>
+                              {candidate.appliedAt && <p className="text-xs text-gray-400 mt-0.5">Applied: {new Date(candidate.appliedAt).toLocaleDateString()}</p>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <span className={`block px-3 py-1 text-xs font-bold uppercase rounded-full tracking-wider mb-1 ${candidate.status?.includes('Completed') ? 'bg-green-100 text-green-700' : candidate.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                {candidate.status}
+                              </span>
+                              <span className="text-sm font-semibold text-gray-800">R1: {candidate.round1_score || 0}%</span>
+                            </div>
+                            <button 
+                              onClick={() => setViewingCandidate(candidate)}
+                              className="bg-gray-900 hover:bg-black text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+                            >
+                              View Details
+                            </button>
+                          </div>
+                        </div>
+                      )) : (
+                        <div className="p-12 text-center border-2 border-dashed border-gray-200 rounded-xl text-gray-500">
+                          No candidates have applied to this role yet.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
