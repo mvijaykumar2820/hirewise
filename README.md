@@ -68,9 +68,7 @@ The project follows a structured 4-phase interview pipeline managed by an Orches
     ```
 
 ## 🎥 Project Demo
-
-[](https://drive.google.com/file/d/1Y0kp6-Lg4ainUQ53fChl367v8LRgVQCL/view?usp=drive_link)
-*(Click the badge above to watch the full project walkthrough)*
+https://drive.google.com/file/d/1Y0kp6-Lg4ainUQ53fChl367v8LRgVQCL/view?usp=drive_link
 
 -----
 
